@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="BOX WORLD 2" />
+  <meta name="theme-color" content="#1e293b" />
+  <title>THE BOX WORLD 2 - Ragnarok Online Web App</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="icon" type="image/x-icon" href="favicon.ico" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="game-container">
+    <!-- Main Game Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Battle Top-Right Return to Prontera Button -->
+    <button id="btn-battle-town" class="ro-battle-town-btn hidden" title="กลับสู่เมือง Prontera">
+      🏠 เมือง Prontera
+    </button>
+
+    <!-- Authentic RO Center Broadcast Announcement Banner (Pop-up Announcement) -->
+    <div id="ro-center-broadcast" class="ro-center-broadcast-banner hidden">
+      <div id="ro-broadcast-content" class="ro-broadcast-content">
+        [ประกาศ]: ข้อความประกาศ
+      </div>
+    </div>
+
+    <!-- Screen 1: Authentic RO Title & Login Screen -->
+    <div id="title-screen" class="screen-overlay">
+      <div class="ro-title-container">
+        <img src="assets/ui/bgi_temp.png" class="ro-title-bg" alt="Ragnarok Title" />
+        <div class="ro-title-logo-top">
+          <img src="assets/ui/ro_logo_select.png" alt="Ragnarok Online" />
+          <div class="box-world-badge">THE BOX WORLD 2</div>
+          <div class="server-status-pill">🟢 Server Status: Online</div>
+        </div>
+
+        <!-- Ragnarok Title Screen Action Menu (Start Game, Install App & Audio Settings) -->
+        <div class="ro-title-actions-box">
+          <button id="btn-login-start" class="ro-btn-title-start">
+            <span class="title-btn-icon">⚔️</span>
+            <span class="title-btn-text">เข้าสู่เกม (Enter World)</span>
+          </button>
+          <button id="btn-pwa-install" class="ro-btn-title-install hidden" title="ติดตั้งลงบนหน้าจอหลักเพื่อเล่นเต็มจอ">
+            <span class="title-btn-icon">📲</span>
+            <span class="title-btn-text">ติดตั้งแอป (Install App)</span>
+          </button>
+          <button id="btn-title-settings" class="ro-btn-title-settings">
+            <span class="title-btn-icon">⚙️</span>
+            <span class="title-btn-text">ตั้งค่าเสียง (Settings)</span>
+          </button>
+        </div>
+        <div class="ro-copyright-footer">THE BOX WORLD 2 • Web App Edition • Powered by Ragnarok Online Client Assets</div>
+      </div>
+    </div>
+
+    <!-- Modal: Audio & Game Settings -->
+    <div id="modal-settings" class="modal-overlay hidden" style="z-index: 10000;">
+      <div class="ro-dialog-window ro-settings-window">
+        <div class="ro-dialog-header">
+          <div class="ro-dialog-title">⚙️ [ ตั้งค่าระบบเสียง Ragnarok Online ]</div>
+          <button id="btn-settings-close" class="ro-dialog-close">✕</button>
+        </div>
+        <div class="ro-dialog-body" style="padding: 16px 20px;">
+          <!-- Master Mute Toggle -->
+          <div class="setting-item-row" style="margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid #cbd5e1;">
+            <label class="setting-label-bold" style="cursor:pointer; display:flex; align-items:center; gap:8px; font-weight:bold; color:#1e293b;">
+              <input type="checkbox" id="setting-master-mute" />
+              <span>🔇 ปิดเสียงทั้งหมด (Mute All Sounds)</span>
+            </label>
+          </div>
+
+          <!-- BGM Settings -->
+          <div class="setting-section-group" style="margin-bottom: 14px;">
+            <div class="setting-group-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <label class="setting-label-sub" style="cursor:pointer; display:flex; align-items:center; gap:8px; font-size:13px; color:#334155;">
+                <input type="checkbox" id="setting-bgm-enable" checked />
+                <span>🎵 เสียงเพลงประกอบพื้นหลัง (BGM)</span>
+              </label>
+              <span id="setting-bgm-val" class="setting-pct" style="font-weight:bold; color:#2563eb;">70%</span>
+            </div>
+            <div class="setting-slider-row">
+              <input type="range" id="setting-bgm-slider" min="0" max="100" value="70" class="ro-volume-slider" style="width:100%;" />
+            </div>
+          </div>
+
+          <!-- SFX Settings -->
+          <div class="setting-section-group" style="margin-bottom: 16px;">
+            <div class="setting-group-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <label class="setting-label-sub" style="cursor:pointer; display:flex; align-items:center; gap:8px; font-size:13px; color:#334155;">
+                <input type="checkbox" id="setting-sfx-enable" checked />
+                <span>💥 เสียงเอฟเฟกต์สกิล &amp; การต่อสู้ (SFX)</span>
+              </label>
+              <span id="setting-sfx-val" class="setting-pct" style="font-weight:bold; color:#2563eb;">85%</span>
+            </div>
+            <div class="setting-slider-row">
+              <input type="range" id="setting-sfx-slider" min="0" max="100" value="85" class="ro-volume-slider" style="width:100%;" />
+            </div>
+          </div>
+
+          <div class="ro-dialog-actions" style="justify-content: center; margin-top:12px;">
+            <button id="btn-settings-save" class="ro-btn-img" style="min-width: 130px; font-weight: bold; background: #2563eb; color: #fff; border-radius:6px; padding:7px 18px; cursor:pointer;">
+              ตกลง (Confirm)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 2: Authentic RO Character Selection Screen -->
+    <div id="char-select-screen" class="screen-overlay hidden">
+      <div class="ro-charselect-container">
+        <!-- 15 Character Slots Grid -->
+        <div class="ro-charselect-main">
+          <div class="ro-charselect-header-title">
+            <span class="cs-title-icon">⚔️</span>
+            <span class="cs-title-text">เลือกตัวละคร (Select Character)</span>
+            <span class="cs-title-hint">[แตะเลือก / ดับเบิ้ลคลิกเข้าเกม]</span>
+          </div>
+          <div id="char-slots-grid" class="ro-char-slots-grid"></div>
+        </div>
+
+        <!-- Right Side Panel -->
+        <div class="ro-charselect-sidebar">
+          <div class="ro-charselect-logo">
+            <img src="assets/ui/ro_logo_select.png" alt="Ragnarok Logo" />
+          </div>
+
+          <!-- Selected Character Spotlight Card -->
+          <div class="ro-char-preview-card">
+            <div class="char-preview-sprite-stage">
+              <img id="char-preview-standing" src="assets/sprites/class_novice_0.png" alt="Selected Character" />
+            </div>
+            <div id="char-preview-name" class="pedestal-char-name">นักผจญภัย (Novice)</div>
+          </div>
+
+          <div class="ro-charselect-info-box">
+            <div class="info-row"><span class="info-k">MAP</span><span id="char-info-map" class="info-v">Prontera</span></div>
+            <div class="info-row"><span class="info-k">JOB</span><span id="char-info-job" class="info-v">Novice</span></div>
+            <div class="info-row"><span class="info-k">Lv.</span><span id="char-info-lv" class="info-v">1</span></div>
+            <div class="info-row"><span class="info-k">EXP</span><span id="char-info-exp" class="info-v">0</span></div>
+            <div class="info-row"><span class="info-k">HP</span><span id="char-info-hp" class="info-v">100</span></div>
+            <div class="info-row"><span class="info-k">SP</span><span id="char-info-sp" class="info-v">30</span></div>
+            <div class="info-row"><span class="info-k">STR</span><span id="char-info-str" class="info-v">1</span></div>
+            <div class="info-row"><span class="info-k">AGI</span><span id="char-info-agi" class="info-v">1</span></div>
+            <div class="info-row"><span class="info-k">VIT</span><span id="char-info-vit" class="info-v">1</span></div>
+            <div class="info-row"><span class="info-k">INT</span><span id="char-info-int" class="info-v">1</span></div>
+            <div class="info-row"><span class="info-k">DEX</span><span id="char-info-dex" class="info-v">1</span></div>
+            <div class="info-row"><span class="info-k">LUK</span><span id="char-info-luk" class="info-v">1</span></div>
+          </div>
+
+          <!-- Big Golden Start Button -->
+          <div class="ro-enter-world-wrap">
+            <button id="btn-enter-world" class="ro-btn-enter-world">
+              <span class="enter-btn-icon">⚔️</span>
+              <span class="enter-btn-text">เริ่มเกม (START)</span>
+            </button>
+          </div>
+
+          <!-- Delete Character Button -->
+          <button id="btn-delete-char" class="ro-btn-delete-char">ลบตัวละคร</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Character Creation (Human Only, No Doram) -->
+    <div id="modal-create-char" class="modal-overlay hidden">
+      <div class="ro-create-window">
+        <div class="ro-create-header">
+          <div class="ro-create-title">👤 สร้างตัวละคร</div>
+          <button id="btn-create-close" class="ro-create-close-btn" onclick="document.getElementById('modal-create-char').classList.add('hidden')">✕</button>
+        </div>
+
+        <div class="ro-create-body">
+          <div class="ro-create-left">
+            <div class="ro-race-card active">
+              <div class="race-header">👒 มนุษย์ (Human)</div>
+              <div class="race-sprite-preview">
+                <img src="assets/sprites/class_novice_0.png" alt="Novice" />
+              </div>
+              <div class="race-job-icons">
+                <span class="race-job-tag">JOB</span>
+                <div class="job-mini-icons">⚔️ 🪄 💰 ✝️ 🗡️ 🏹</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="ro-create-mid">
+            <div class="ro-gender-switch">
+              <button id="create-gender-male" class="gender-btn active">♂ ชาย</button>
+              <button id="create-gender-female" class="gender-btn">♀ หญิง</button>
+            </div>
+
+            <div class="ro-preview-stage">
+              <button id="create-turn-left" class="stage-turn-btn">&lt;</button>
+              <div class="stage-spotlight">
+                <img id="create-preview-sprite" src="assets/sprites/class_novice_0.png" alt="Preview" />
+              </div>
+              <button id="create-turn-right" class="stage-turn-btn">&gt;</button>
+            </div>
+
+            <div class="ro-name-input-row">
+              <input type="text" id="create-char-name-input" placeholder="กรุณาตั้งชื่อตัวละคร..." maxlength="20" autocomplete="off" />
+            </div>
+          </div>
+
+          <div class="ro-create-right">
+            <div class="section-label">ทรงผม (Hairstyles)</div>
+            <div id="create-hair-grid" class="ro-hair-grid-wrap"></div>
+
+            <div class="section-label">สีผม (Hair Colors)</div>
+            <div id="create-hair-colors" class="ro-color-swatches-wrap"></div>
+          </div>
+        </div>
+
+        <div class="ro-create-footer">
+          <button id="btn-create-back" class="ro-btn-create-action back">กลับ</button>
+          <button id="btn-create-confirm" class="ro-btn-create-action confirm">สร้าง (Create)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Screen 3: Authentic RO Map Transition Loading Screen -->
+    <div id="loading-screen" class="screen-overlay hidden">
+      <div class="ro-loading-container">
+        <img id="loading-art-img" src="assets/ui/loading00.jpg" class="ro-loading-art" alt="Loading" />
+        <div class="ro-loading-hud">
+          <div class="ro-loading-title-row">
+            <span id="loading-map-title" class="ro-map-title">Prontera City (prontera.gat)</span>
+            <span id="loading-percent-text" class="ro-loading-percent">0%</span>
+          </div>
+          <div class="ro-loading-progress-frame">
+            <div id="loading-progress-fill" class="ro-loading-progress-fill" style="width: 0%;"></div>
+          </div>
+          <div id="loading-status-tip" class="ro-loading-tip">กำลังเชื่อมต่อข้อมูลแผนที่...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- In-Game HUD: Basic Info Status Bar (Top Left) -->
+    <div id="ingame-hud" class="hidden">
+      <div class="ro-basic-info-win">
+        <div class="basic-info-header">
+          <span id="hud-player-name" class="player-name">มายังครับ</span>
+          <span id="hud-player-zeny" style="font-size:10px; color:#ffeaa7;">💰 1,500 Z</span>
+        </div>
+        <div class="basic-info-body">
+          <div id="hud-player-joblv" class="job-text">Lv 58 / Priest / J.Lv 13</div>
+          <div class="gauge-line">
+            <span class="gauge-label">HP</span>
+            <div class="gauge-frame hp"><div id="hud-hp-bar" class="gauge-fill" style="width: 100%;"></div></div>
+            <span id="hud-hp-text" class="gauge-val">1647 / 1647</span>
+          </div>
+          <div class="gauge-line">
+            <span class="gauge-label">SP</span>
+            <div class="gauge-frame sp"><div id="hud-sp-bar" class="gauge-fill" style="width: 100%;"></div></div>
+            <span id="hud-sp-text" class="gauge-val">738 / 767</span>
+          </div>
+          <div class="gauge-line">
+            <span class="gauge-label">Exp</span>
+            <div class="gauge-frame exp"><div id="hud-exp-bar" class="gauge-fill" style="width: 0%;"></div></div>
+            <span class="gauge-val">0.0%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Minimap Coordinates Display -->
+      <div class="ro-minimap-coords-tag">
+        <span id="hud-map-coords">156 191</span>
+      </div>
+    </div>
+
+    <!-- Persistent Action / Menu Bar & Quick Potion Hotbar (Visible in BOTH Town & Battle!) -->
+    <div id="persistent-hud-bars" class="hidden">
+      <!-- 4-Slot Quick Usable / Potion Bar -->
+      <div id="quick-usable-bar" class="ro-quick-usable-bar"></div>
+
+      <!-- 4-Button RO Menu Bar -->
+      <div class="ro-menu-bar">
+        <button id="menu-btn-status" class="ro-menu-btn" title="ความสามารถ (Status)">📊 สเตตัส</button>
+        <button id="menu-btn-equip" class="ro-menu-btn" title="สวมใส่อุปกรณ์ & คอสสวมใส่ 10 ช่อง">🛡️ สวมใส่</button>
+        <button id="menu-btn-inven" class="ro-menu-btn" title="ช่องเก็บของ & การ์ด (Inventory)">🎒 เก็บของ</button>
+        <button id="menu-btn-skills" class="ro-menu-btn" title="สกิลโจมตี & ซัพพอร์ต (Skills)">⚡ สกิล</button>
+      </div>
+    </div>
+
+    <!-- Window 1: ความสามารถ (Status / Attributes Window) -->
+    <div id="win-status" class="ro-window ro-status-win hidden">
+      <div class="ro-win-header">
+        <span class="ro-win-title">📊 ความสามารถ (Status)</span>
+        <button id="win-status-close" class="ro-win-close">✕</button>
+      </div>
+      <div class="ro-win-body">
+        <div class="status-grid">
+          <div class="stat-col left">
+            <div class="stat-row"><span class="stat-lbl">Str</span><span id="val-str" class="stat-v">1 +12</span><button id="stat-inc-str" class="btn-inc">▶ <span id="cost-str">2</span></button></div>
+            <div class="stat-row"><span class="stat-lbl">Agi</span><span id="val-agi" class="stat-v">1 +13</span><button id="stat-inc-agi" class="btn-inc">▶ <span id="cost-agi">2</span></button></div>
+            <div class="stat-row"><span class="stat-lbl">Vit</span><span id="val-vit" class="stat-v">1 +1</span><button id="stat-inc-vit" class="btn-inc">▶ <span id="cost-vit">2</span></button></div>
+            <div class="stat-row"><span class="stat-lbl">Int</span><span id="val-int" class="stat-v">50 +12</span><button id="stat-inc-int" class="btn-inc">▶ <span id="cost-int">6</span></button></div>
+            <div class="stat-row"><span class="stat-lbl">Dex</span><span id="val-dex" class="stat-v">68 +10</span><button id="stat-inc-dex" class="btn-inc">▶ <span id="cost-dex">8</span></button></div>
+            <div class="stat-row"><span class="stat-lbl">Luk</span><span id="val-luk" class="stat-v">1 +3</span><button id="stat-inc-luk" class="btn-inc">▶ <span id="cost-luk">2</span></button></div>
+          </div>
+
+          <div class="stat-col right">
+            <div class="stat-row"><span class="stat-lbl">Atk</span><span id="val-atk" class="stat-v">44 + 140</span></div>
+            <div class="stat-row"><span class="stat-lbl">Matk</span><span id="val-matk" class="stat-v">123 + 0</span></div>
+            <div class="stat-row"><span class="stat-lbl">Def</span><span id="val-def" class="stat-v">32 + 10</span></div>
+            <div class="stat-row"><span class="stat-lbl">Mdef</span><span id="val-mdef" class="stat-v">92 + 0</span></div>
+            <div class="stat-row"><span class="stat-lbl">Hit</span><span id="val-hit" class="stat-v">332</span></div>
+            <div class="stat-row"><span class="stat-lbl">Flee</span><span id="val-flee" class="stat-v">172 + 1</span></div>
+            <div class="stat-row"><span class="stat-lbl">Critical</span><span id="val-crit" class="stat-v">2</span></div>
+            <div class="stat-row"><span class="stat-lbl">Aspd</span><span id="val-aspd" class="stat-v">165</span></div>
+            <div class="stat-row highlight"><span class="stat-lbl">Status Point</span><span id="val-status-pts" class="stat-v">15</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Window 2: ช่องเก็บของ (Inventory Window with Costume & Card Tabs) -->
+    <div id="win-inventory" class="ro-window ro-inven-win hidden">
+      <div class="ro-win-header">
+        <span class="ro-win-title">🎒 ช่องเก็บของ (Inventory)</span>
+        <button id="win-inven-close" class="ro-win-close">✕</button>
+      </div>
+      <div class="ro-inven-body">
+        <div class="ro-inven-tabs">
+          <button id="inven-tab-use" class="ro-inven-tab active">Use</button>
+          <button id="inven-tab-eqp" class="ro-inven-tab">Eqp</button>
+          <button id="inven-tab-cos" class="ro-inven-tab">Cos</button>
+          <button id="inven-tab-card" class="ro-inven-tab">Card</button>
+          <button id="inven-tab-etc" class="ro-inven-tab">Etc</button>
+        </div>
+        <div id="inven-slots-grid" class="ro-inven-grid"></div>
+        <div class="ro-inven-footer">
+          <span class="weight-label">⚖️ น้ำหนัก: <strong id="inven-weight-text">13/2000</strong></span>
+          <span class="weight-label" style="margin-left:auto;">💰 <strong id="inven-zeny-text">1,500 Z</strong></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Window 3: Authentic 10-Slot RO Equipment & 10-Slot Costume/Shadow Window -->
+    <div id="win-equipment" class="ro-window ro-equip-win hidden">
+      <div class="ro-win-header">
+        <span class="ro-win-title">🛡️ สวมใส่อุปกรณ์ & คอสสวมใส่ (10 ช่อง RO แท้)</span>
+        <button id="win-equip-close" class="ro-win-close">✕</button>
+      </div>
+      <div class="ro-inven-tabs" style="padding:3px 6px; background:#dce4f0; border-bottom:1px solid #8a9bb5;">
+        <button id="equip-mode-main" class="ro-inven-tab active" style="flex:1;">🛡️ อุปกรณ์หลัก (10 ช่อง)</button>
+        <button id="equip-mode-costume" class="ro-inven-tab" style="flex:1;">👑 คอสสวมใส่ / Shadow (10 ช่อง)</button>
+      </div>
+      <div class="ro-equip-10slot-wrap">
+        <!-- Left 5 Slots -->
+        <div id="equip-col-left" class="ro-equip-col left"></div>
+
+        <!-- Center Character Preview on equipwin_bg -->
+        <div class="ro-equip-center-doll">
+          <img id="equip-doll-sprite" src="assets/sprites/class_novice_0.png" alt="Character" />
+          <div id="equip-doll-job" class="ro-equip-doll-job">Novice</div>
+        </div>
+
+        <!-- Right 5 Slots -->
+        <div id="equip-col-right" class="ro-equip-col right"></div>
+      </div>
+    </div>
+
+    <!-- Window 4: สกิลตัวละคร (ระดับสกิลเพิ่มขึ้นอัตโนมัติตาม Job Lv) -->
+    <div id="win-skills" class="ro-window ro-skills-win hidden">
+      <div class="ro-win-header">
+        <span class="ro-win-title">⚡ สกิลตัวละคร (ระดับสกิลเพิ่มขึ้นอัตโนมัติตาม Job Lv)</span>
+        <button id="win-skills-close" class="ro-win-close">✕</button>
+      </div>
+      <div class="ro-skills-subheader" style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
+        <span id="skills-branch-label">คลาสปัจจุบัน: Novice</span>
+        <button id="btn-reset-skills" class="ro-btn-reset-stat" style="padding:3px 8px; font-size:10px;">🔄 รีเซ็ตสกิล (ใช้ Zeny)</button>
+      </div>
+      <div id="skills-list-container" class="ro-skills-body"></div>
+    </div>
+
+    <!-- Modal: Authentic RO Item / Card Detail & Card Compounding Window -->
+    <div id="modal-item-detail" class="modal-overlay hidden">
+      <div class="ro-window ro-item-detail-win">
+        <div class="ro-win-header">
+          <span id="item-detail-title" class="ro-win-title">Stunner</span>
+          <button id="item-detail-close" class="ro-win-close">✕</button>
+        </div>
+        <div class="ro-item-detail-body">
+          <div class="ro-item-card-art-col">
+            <div class="ro-item-art-box">
+              <img id="item-detail-collection-img" src="assets/collection/stunner.png" alt="Item Art" />
+            </div>
+            <div id="item-detail-card-slots" class="ro-item-card-slots"></div>
+          </div>
+
+          <div class="ro-item-card-desc-col">
+            <div id="item-detail-header-name" class="ro-item-card-header-name">Stunner</div>
+            <div id="item-detail-desc-content" class="ro-item-card-desc-content"></div>
+          </div>
+        </div>
+
+        <!-- Card Compound Target Selector (shown when compounding a card) -->
+        <div id="item-compound-target-box" class="ro-compound-box hidden"></div>
+
+        <div class="ro-item-detail-footer" style="display:flex; gap:6px; justify-content:flex-end;">
+          <button id="item-detail-btn-discard" class="ro-btn-item-action cancel" style="background:#c0392b; color:#fff; margin-right:auto;">🗑️ ทิ้งของ</button>
+          <button id="item-detail-btn-action" class="ro-btn-item-action">สวมใส่</button>
+          <button id="item-detail-btn-close" class="ro-btn-item-action cancel">ปิด</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NPC 1 Modal: Warp NPC - 200 Stages + All 1,272 RO Maps -->
+    <div id="modal-warp-zones" class="modal-overlay hidden">
+      <div class="ro-dialog-window ro-warp-200-win">
+        <div class="ro-dialog-header">
+          <div class="ro-dialog-title">🌀 [ Warp NPC - เลือกด่าน & แผนที่ RO ทั้งหมด (1,272 Maps) ]</div>
+          <button class="ro-dialog-close" onclick="document.getElementById('modal-warp-zones').classList.add('hidden')">✕</button>
+        </div>
+        <div class="ro-dialog-body">
+          <div class="ro-shop-tabs" style="margin-bottom:6px; display:flex; gap:6px;">
+            <button id="warp-mode-zones" class="ro-shop-tab active" style="flex:1;">🚩 โซนลุยด่าน (20 โซน)</button>
+            <button id="warp-mode-allmaps" class="ro-shop-tab" style="flex:1;">🌍 แผนที่ RO ทั้งหมด (1,272 Maps)</button>
+          </div>
+          <div id="warp-search-row" class="hidden" style="margin-bottom:6px; display:flex; gap:6px;">
+            <input type="text" id="warp-map-search" placeholder="ค้นหาชื่อแมพ / รหัสแมพ (เช่น prontera, pay_dun, gl_church, gef_fild)..." style="flex:1; padding:5px 8px; border:1px solid #64748b; border-radius:4px; font-size:11px;" />
+          </div>
+          <!-- Zone Selector Tabs (Zone 1..20) -->
+          <div id="warp-zone-tabs" class="ro-zone-tabs-scroll"></div>
+          <!-- Selected Zone Info & Stages/Maps Grid -->
+          <div id="warp-zone-header" class="ro-zone-info-banner"></div>
+          <div id="warp-stages-grid" class="ro-stages-grid"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Full RO Client Database Compendium (29,368 Items + 1,272 Maps) -->
+    <div id="modal-ro-compendium" class="modal-overlay hidden">
+      <div class="ro-dialog-window ro-warp-200-win">
+        <div class="ro-dialog-header">
+          <div class="ro-dialog-title">📚 [ คลังข้อมูล RO แท้ทั้งหมด: 29,368 ไอเทม & 1,272 แผนที่ ]</div>
+          <button class="ro-dialog-close" onclick="document.getElementById('modal-ro-compendium').classList.add('hidden')">✕</button>
+        </div>
+        <div class="ro-dialog-body">
+          <div id="compendium-tabs" class="ro-zone-tabs-scroll" style="margin-bottom:6px;">
+            <button class="ro-zone-tab-btn active" data-cat="weapons">⚔️ อาวุธ (2,806)</button>
+            <button class="ro-zone-tab-btn" data-cat="armors">🛡️ ของสวมใส่ (5,713)</button>
+            <button class="ro-zone-tab-btn" data-cat="costumes">👑 คอสสวมใส่ (4,269)</button>
+            <button class="ro-zone-tab-btn" data-cat="cards">🃏 การ์ด (5,593)</button>
+            <button class="ro-zone-tab-btn" data-cat="usables">🧪 ของกดใช้ (4,005)</button>
+            <button class="ro-zone-tab-btn" data-cat="etcs">💎 ของทั่วไป (6,982)</button>
+            <button class="ro-zone-tab-btn" data-cat="maps">🗺️ แผนที่ (1,272)</button>
+          </div>
+          <div style="display:flex; gap:6px; margin-bottom:6px; align-items:center;">
+            <input type="text" id="compendium-search-input" placeholder="ค้นหาชื่อไอเทม / การ์ด / คอสตูม / รหัส ID..." style="flex:1; padding:5px 8px; border:1px solid #64748b; border-radius:4px; font-size:11px;" />
+            <button id="compendium-prev-btn" class="ro-page-btn" style="padding:4px 8px;">◀</button>
+            <span id="compendium-page-info" style="font-size:11px; font-weight:bold; color:#1e293b; min-width:70px; text-align:center;">1 / 1</span>
+            <button id="compendium-next-btn" class="ro-page-btn" style="padding:4px 8px;">▶</button>
+          </div>
+          <div id="compendium-list" class="ro-job-list" style="max-height:370px; overflow-y:auto;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NPC 2 Modal: Job Master NPC (เปลี่ยนอาชีพ คลาส 1 - 3 & รีสเตตัส) -->
+    <div id="modal-job-master" class="modal-overlay hidden">
+      <div class="ro-dialog-window">
+        <div class="ro-dialog-header">
+          <div class="ro-dialog-title">⚔️ [ Job Master - เปลี่ยนอาชีพ คลาส 1 ถึง คลาส 3 ]</div>
+          <button class="ro-dialog-close" onclick="document.getElementById('modal-job-master').classList.add('hidden')">✕</button>
+        </div>
+        <div class="ro-dialog-body">
+          <div class="ro-npc-speech">
+            "เลือกสายอาชีพที่ต้องการเปลี่ยนได้ทันที (ตั้งแต่ Novice ➔ คลาส 1 ➔ คลาส 2 / ไฮคลาส ➔ คลาส 3) พร้อมรับสกิลประจำสายอาชีพ!"
+          </div>
+          <div class="ro-job-master-actions">
+            <button id="btn-reset-stats" class="ro-btn-reset-stat">🔄 รีเซ็ต Status Points ทั้งหมด (ฟรี)</button>
+          </div>
+          <div id="job-master-list" class="ro-job-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NPC 3 Modal: Tool Dealer NPC (ร้านของใช้ทั่วไป ซื้อยา / ขายขยะและอุปกรณ์) -->
+    <div id="modal-tool-shop" class="modal-overlay hidden">
+      <div class="ro-dialog-window">
+        <div class="ro-dialog-header">
+          <div class="ro-dialog-title">🛒 [ ร้านของใช้ทั่วไป - ซื้อยา/บัพ & ขายไอเทมดรอป ]</div>
+          <button class="ro-dialog-close" onclick="document.getElementById('modal-tool-shop').classList.add('hidden')">✕</button>
+        </div>
+        <div class="ro-dialog-body">
+          <div class="ro-shop-top-bar">
+            <div class="ro-shop-tabs">
+              <button id="shop-tab-buy" class="ro-shop-tab active">🛍️ ซื้อของใช้ (Buy)</button>
+              <button id="shop-tab-sell" class="ro-shop-tab">💰 ขายของดรอป (Sell)</button>
+            </div>
+            <div class="ro-shop-zeny">เงินของคุณ: <strong id="shop-player-zeny">1,500 Z</strong></div>
+          </div>
+          <div id="shop-sell-all-bar" class="ro-shop-sellall-bar hidden">
+            <button id="btn-sell-all-etc" class="ro-btn-sell-all">💰 ขายขยะมอนสเตอร์ (Etc) ทั้งหมดในตัว</button>
+          </div>
+          <div id="shop-items-list" class="ro-job-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NPC 4 Modal: Authentic Renewal Refine Dual-Window (Image 4) -->
+    <div id="modal-refine" class="modal-overlay hidden" style="z-index: 9990;">
+      <div class="ro-renewal-refine-container">
+        
+        <!-- Left Window: อัพเกรด (Upgrade Forge) -->
+        <div class="ro-refine-left-win">
+          <div class="ro-refine-titlebar">
+            <span class="titlebar-dot">●</span>
+            <span class="titlebar-text">อัพเกรด</span>
+            <button id="btn-refine-win-close" class="ro-win-close" onclick="document.getElementById('modal-refine').classList.add('hidden')">✕</button>
+          </div>
+
+          <div class="ro-refine-left-body">
+            <!-- Success Rate Bar -->
+            <div class="ro-refine-rate-bar-wrap">
+              <div class="ro-refine-rate-bar-fill" id="refine-rate-fill" style="width: 100%;"></div>
+              <span class="ro-refine-rate-text" id="refine-rate-label">สำเร็จ 100%</span>
+            </div>
+
+            <!-- Hexagonal Socket Row (5 Hexagons) -->
+            <div class="ro-hex-sockets-row">
+              <div class="ro-hex-socket active" id="hex-ore-slot" title="แร่ตีบวกหลัก">
+                <div class="hex-shape">
+                  <img id="hex-ore-icon" src="/grf/icon/1010.png" alt="Ore" />
+                </div>
+                <div class="hex-counter" id="hex-ore-count">0/1</div>
+              </div>
+
+              <div class="ro-hex-socket" id="hex-hd-slot" title="หินกันแตก (Blessing Ore)">
+                <div class="hex-shape">
+                  <img id="hex-hd-icon" src="/grf/icon/6226.png" alt="Blessing Ore" />
+                </div>
+                <div class="hex-counter" id="hex-hd-count">0/1</div>
+              </div>
+
+              <div class="ro-hex-socket" id="hex-anvil-slot" title="ทั่งตีเหล็ก">
+                <div class="hex-shape">
+                  <img id="hex-anvil-icon" src="/grf/icon/986.png" alt="Anvil" />
+                </div>
+                <div class="hex-counter" id="hex-anvil-count">0/1</div>
+              </div>
+
+              <div class="ro-hex-socket empty">
+                <div class="hex-shape"></div>
+              </div>
+
+              <div class="ro-hex-socket empty special">
+                <div class="hex-shape"></div>
+              </div>
+            </div>
+
+            <!-- Blacksmith Cat Furnace Centerpiece & Anvil -->
+            <div class="ro-cat-furnace-stage">
+              <!-- Cute White Cat Furnace Graphic -->
+              <div class="cat-furnace-visual" id="cat-furnace-glow">
+                <div class="cat-furnace-ears"></div>
+                <div class="cat-furnace-eyes"></div>
+                <div class="cat-furnace-mouth"></div>
+              </div>
+
+              <!-- Anvil Item Slot -->
+              <div class="ro-anvil-slot-box" id="refine-anvil-target-box">
+                <img id="refine-selected-item-img" src="" alt="Selected Item" class="hidden" />
+                <span id="refine-empty-anvil-hint" class="anvil-hint-text">เลือกอุปกรณ์จากหน้าต่างขวา</span>
+              </div>
+
+              <!-- Selected Item Title -->
+              <div class="ro-refine-item-name" id="refine-selected-item-name">กรุณาเลือกอุปกรณ์ที่จะตีบวก</div>
+            </div>
+
+            <!-- Bottom Actions: Upgrade Button & Cancel Button -->
+            <div class="ro-refine-actions-row">
+              <button id="btn-do-refine-upgrade" class="ro-btn-upgrade-zeny" disabled>
+                <span class="zeny-circle">Z</span>
+                <span class="upgrade-btn-text">อัพเกรด</span>
+                <span class="upgrade-cost-text" id="refine-cost-display">0 Z</span>
+              </button>
+              <button id="btn-refine-cancel" class="ro-btn-upgrade-cancel" onclick="document.getElementById('modal-refine').classList.add('hidden')">ยกเลิก</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Window: ไอเทมที่ครอบครอง (Possessed Inventory) -->
+        <div class="ro-refine-right-win">
+          <div class="ro-refine-titlebar">
+            <span class="titlebar-dot">●</span>
+            <span class="titlebar-text">ไอเทมที่ครอบครอง</span>
+          </div>
+
+          <div class="ro-refine-right-body">
+            <!-- Vertical Tabs: cons., equip, etc., priv. -->
+            <div class="ro-refine-vert-tabs">
+              <button class="refine-vtab" data-tab="cons">c<br>o<br>n<br>s<br>.</button>
+              <button class="refine-vtab active" data-tab="equip">e<br>q<br>u<br>i<br>p</button>
+              <button class="refine-vtab" data-tab="etc">e<br>t<br>c<br>.</button>
+              <button class="refine-vtab" data-tab="priv">p<br>r<br>i<br>v<br>.</button>
+            </div>
+
+            <!-- 5x8 Item Slots Grid (40 oval slots) -->
+            <div class="ro-refine-grid-5x8" id="refine-inventory-grid"></div>
+          </div>
+
+          <!-- Bottom Checkbox Options -->
+          <div class="ro-refine-bottom-opts">
+            <label class="refine-chk-label">
+              <input type="checkbox" checked /> ล็อคการโยนไอเทม
+            </label>
+            <label class="refine-chk-label">
+              <input type="checkbox" checked /> เปรียบเทียบไอเทม
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Modal: Level Up Skill Selection (with Zeny Reroll Button!) -->
+    <div id="modal-levelup" class="modal-overlay hidden">
+      <div class="ro-card-modal">
+        <div class="ro-card-modal-header">
+          <div class="ro-card-modal-banner">⭐ LEVEL UP !! ⭐</div>
+          <div class="ro-card-modal-sub">เลือก 1 สกิล (สุ่มจากสกิล RO ทั้งหมดตามคลาสปัจจุบันของคุณ)</div>
+        </div>
+        <div id="card-choices" class="ro-card-grid"></div>
+        <div style="text-align:center; margin-top:8px;">
+          <button id="btn-reroll-skills" class="ro-btn-reset-stat" style="padding:7px 16px; font-size:12px; font-weight:bold; background:#f39c12; color:#1e272e; border:2px solid #fff; border-radius:6px; cursor:pointer;">
+            🔄 สุ่มตัวเลือกสกิลใหม่ (ใช้ 2,500 Z)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Game Over -->
+    <div id="modal-gameover" class="modal-overlay hidden">
+      <div class="ro-dialog-window ro-gameover-dialog">
+        <div class="ro-gameover-banner">💀 GAME OVER 💀</div>
+        <div class="ro-gameover-stats">
+          <div class="stat-line"><span>🗺️ ถึงด่านที่:</span> <strong id="stat-stage">Stage 1</strong></div>
+          <div class="stat-line"><span>⏱️ เวลาที่รอด:</span> <strong id="stat-time">00:00</strong></div>
+          <div class="stat-line"><span>⭐ เลเวลตัวละคร:</span> <strong id="stat-level">Lv. 1</strong></div>
+          <div class="stat-line"><span>💀 มอนสเตอร์ที่สังหาร:</span> <strong id="stat-kills">0 ตัว</strong></div>
+          <div class="stat-line"><span>💰 Zeny สะสม:</span> <strong id="stat-zeny">0 Z</strong></div>
+        </div>
+        <button id="btn-return-town" class="ro-btn-return">
+          <img src="assets/ui/btn_ok.png" alt="OK" /> <span>กลับสู่เมือง Prontera (ของและเงินอยู่ครบ)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Modal: Centered RO Message Box (Authentic in-game pop-up replacing native browser alerts/confirms) -->
+    <div id="modal-ro-msgbox" class="modal-overlay hidden" style="z-index: 10000;">
+      <div class="ro-dialog-window ro-msgbox-window" style="max-width: 360px;">
+        <div class="ro-dialog-header">
+          <div id="ro-msgbox-title" class="ro-dialog-title">ระบบ Ragnarok Online</div>
+          <button class="ro-dialog-close" id="btn-ro-msgbox-close">✕</button>
+        </div>
+        <div class="ro-dialog-body" style="padding: 16px; text-align: center;">
+          <div id="ro-msgbox-icon" style="font-size: 32px; margin-bottom: 8px;">ℹ️</div>
+          <div id="ro-msgbox-text" class="ro-npc-speech" style="text-align: left; font-size: 13px; line-height: 1.6; white-space: pre-line; max-height: 220px; overflow-y: auto;"></div>
+          <div id="ro-msgbox-actions" class="ro-dialog-actions" style="margin-top: 14px; gap: 10px; justify-content: center;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Authentic Centered Hollgrehenn Refine Scene (ตีบวก Pop-up พร้อมเสียงตี 3 ครั้ง เสียงแตก/สำเร็จ) -->
+    <div id="modal-refine-anim" class="modal-overlay hidden" style="z-index: 9999;">
+      <div class="ro-dialog-window ro-refine-anim-window" style="max-width: 380px;">
+        <div class="ro-dialog-header">
+          <div class="ro-dialog-title">🔨 [ ช่างตีบวก Hollgrehenn - แท่นตีเหล็กโบราณ ]</div>
+          <button class="ro-dialog-close" id="btn-refine-anim-close">✕</button>
+        </div>
+        <div class="ro-dialog-body" style="padding: 14px; text-align: center;">
+          <div id="refine-stage-box" class="refine-forge-stage">
+            <!-- Sparks Container -->
+            <div id="refine-sparks" class="refine-sparks-layer"></div>
+            <!-- Hollgrehenn NPC -->
+            <img id="refine-npc-smith" src="assets/effects/refine/hollgrehenn_0.png" class="refine-smith-sprite" alt="Hollgrehenn" />
+            <!-- Anvil Platform -->
+            <div class="refine-anvil-wrapper">
+              <img id="refine-item-target" src="" class="refine-item-on-anvil" alt="Target Item" />
+              <img src="assets/effects/refine/anvil_0.png" class="refine-anvil-sprite" alt="Anvil" />
+            </div>
+            <!-- Hammer (Swinging Animation) -->
+            <img id="refine-hammer" src="assets/effects/refine/hammer_0.png" class="refine-hammer-sprite" alt="Hammer" />
+            <!-- Outcome Overlay (Success / Break Banner) -->
+            <div id="refine-outcome-banner" class="refine-outcome-banner hidden">
+              <img id="refine-outcome-img" src="" alt="Outcome" />
+              <div id="refine-outcome-badge" class="refine-outcome-text"></div>
+            </div>
+          </div>
+
+          <!-- Strike Dots: ● ● ● -->
+          <div id="refine-strike-dots" class="refine-strike-dots">
+            <span class="refine-dot" id="refine-dot-1">●</span>
+            <span class="refine-dot" id="refine-dot-2">●</span>
+            <span class="refine-dot" id="refine-dot-3">●</span>
+          </div>
+
+          <!-- Hollgrehenn Speech Box -->
+          <div id="refine-speech-box" class="ro-npc-speech refine-speech-box">
+            "วางอุปกรณ์ลงบนทั่งตีเหล็ก... ข้าจะเริ่มทุบแล้วนะ!"
+          </div>
+
+          <!-- Action Button (Shown after result) -->
+          <div id="refine-action-bar" class="ro-dialog-actions" style="margin-top: 10px; justify-content: center;">
+            <button id="btn-refine-finish-ok" class="ro-btn-img hidden" style="min-width: 130px; font-weight: bold; background: #27ae60; color: #fff; border-color: #2ecc71;">
+              ตกลง (OK)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Landscape Warning -->
+    <div id="landscape-warning">
+      <div class="rotate-phone-icon">📱</div>
+      <p>กรุณาหมุนอุปกรณ์เป็นแนวตั้ง (Portrait Mode)<br />เพื่อประสบการณ์การเล่นที่เหมาะสม</p>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

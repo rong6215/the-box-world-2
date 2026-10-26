@@ -1,0 +1,20 @@
+{
+  "name": "the-box-world-2-web",
+  "version": "2.0.0",
+  "description": "THE BOX WORLD 2 - Ragnarok Online Web App Edition",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [
+    "ragnarok",
+    "ro",
+    "the-box-world",
+    "mmorpg",
+    "webapp",
+    "pwa",
+    "threejs"
+  ],
+  "author": "The Box World Team",
+  "license": "ISC"
+}
