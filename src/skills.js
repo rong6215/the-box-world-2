@@ -1063,8 +1063,8 @@ export class SkillManager {
   }
 
   addSkill(skillId, lvDelta = 1) {
-    // Handle Special Stat Upgrade Cards when all skills are maxed
-    if (skillId === 'stat_upgrade_atk') {
+    // Handle Special Stat Upgrade Cards
+    if (skillId === 'stat_upgrade_atk' || skillId === 'stat_str_novice') {
       if (this.character) {
         this.character.stats.str = (this.character.stats.str || 10) + 4;
         this.character.stats.int = (this.character.stats.int || 10) + 4;
@@ -1073,7 +1073,7 @@ export class SkillManager {
       this.player.sp = this.player.maxSp;
       return;
     }
-    if (skillId === 'stat_upgrade_aspd') {
+    if (skillId === 'stat_upgrade_aspd' || skillId === 'stat_agi_novice') {
       if (this.character) {
         this.character.stats.agi = (this.character.stats.agi || 10) + 4;
         this.character.stats.luk = (this.character.stats.luk || 10) + 4;
@@ -1081,10 +1081,26 @@ export class SkillManager {
       this.player.hp = this.player.maxHp;
       return;
     }
-    if (skillId === 'stat_upgrade_vit') {
+    if (skillId === 'stat_upgrade_vit' || skillId === 'stat_vit_novice') {
       if (this.character) {
         this.character.stats.vit = (this.character.stats.vit || 10) + 5;
         this.character.stats.dex = (this.character.stats.dex || 10) + 3;
+      }
+      this.player.hp = this.player.maxHp;
+      return;
+    }
+    if (skillId === 'stat_dex_novice') {
+      if (this.character) {
+        this.character.stats.dex = (this.character.stats.dex || 10) + 5;
+        this.character.stats.str = (this.character.stats.str || 10) + 2;
+      }
+      this.player.hp = this.player.maxHp;
+      return;
+    }
+    if (skillId === 'stat_luk_novice') {
+      if (this.character) {
+        this.character.stats.luk = (this.character.stats.luk || 10) + 5;
+        this.character.stats.agi = (this.character.stats.agi || 10) + 2;
       }
       this.player.hp = this.player.maxHp;
       return;
@@ -1127,6 +1143,81 @@ export class SkillManager {
   // 2. If Support slots are full, ONLY offer offensive skills or level-ups!
   // 3. If Offensive slots are also full, ONLY offer level-ups (Lv.X -> Lv.X+1) for learned skills!
   getLevelUpChoices(branch = 'swordsman', playerTier = 1, count = 3) {
+    const isNovice = (branch === 'novice' || this.player?.branch === 'novice' || this.character?.jobId === 'novice' || playerTier === 0);
+
+    // Rule: Novice starts with NO active skills. They must farm Job Lv.10 and change job first!
+    if (isNovice) {
+      const noviceCards = [
+        {
+          id: 'nv_firstaid',
+          name: 'First Aid (ปฐมพยาบาล)',
+          branch: 'novice',
+          tier: 0,
+          category: 'support',
+          isLevelUp: this.getSkillLevel('nv_firstaid') > 0,
+          slotStatusText: '🔰 สกิลพื้นฐานโนวิซ (ฟื้นฟู HP ต่อเนื่อง)',
+          iconImg: '/grf/skill/nv_firstaid.png',
+          desc: 'ฟื้นฟู HP อัตโนมัติทุก 5 วินาที ช่วยให้รอดชีวิตในการฟาร์มเลเวล'
+        },
+        {
+          id: 'stat_str_novice',
+          name: 'Novice Muscle (กล้ามเนื้อโนวิซ)',
+          branch: 'novice',
+          tier: 0,
+          category: 'offensive',
+          isLevelUp: true,
+          slotStatusText: '🔰 อัพเกรดสเตตัสโนวิซ [STR +4, INT +4]',
+          iconImg: '/grf/skill/sm_sword.png',
+          desc: 'เพิ่ม STR +4 และ INT +4 ถาวร เพื่อโจมตีมอนสเตอร์แรงขึ้น'
+        },
+        {
+          id: 'stat_agi_novice',
+          name: 'Novice Agility (ความว่องไวโนวิซ)',
+          branch: 'novice',
+          tier: 0,
+          category: 'support',
+          isLevelUp: true,
+          slotStatusText: '🔰 อัพเกรดสเตตัสโนวิซ [AGI +4, LUK +4]',
+          iconImg: '/grf/skill/tf_double.png',
+          desc: 'เพิ่ม AGI +4 และ LUK +4 ถาวร เพิ่มความเร็วโจมตีและหลบหลีก'
+        },
+        {
+          id: 'stat_vit_novice',
+          name: 'Novice Endurance (ความอึดโนวิซ)',
+          branch: 'novice',
+          tier: 0,
+          category: 'support',
+          isLevelUp: true,
+          slotStatusText: '🔰 อัพเกรดสเตตัสโนวิซ [VIT +5, DEX +3]',
+          iconImg: '/grf/skill/al_heal.png',
+          desc: 'เพิ่ม VIT +5, DEX +3 ถาวร และฟื้นฟู HP 100% เต็มทันที'
+        },
+        {
+          id: 'stat_dex_novice',
+          name: 'Novice Accuracy (ความแม่นยำโนวิซ)',
+          branch: 'novice',
+          tier: 0,
+          category: 'offensive',
+          isLevelUp: true,
+          slotStatusText: '🔰 อัพเกรดสเตตัสโนวิซ [DEX +5, STR +2]',
+          iconImg: '/grf/skill/ac_owl.png',
+          desc: 'เพิ่ม DEX +5 และ STR +2 ถาวร โจมตีโดนแน่นอนไม่พลาดเป้า'
+        },
+        {
+          id: 'stat_luk_novice',
+          name: 'Novice Fortune (โชคลาภโนวิซ)',
+          branch: 'novice',
+          tier: 0,
+          category: 'support',
+          isLevelUp: true,
+          slotStatusText: '🔰 อัพเกรดสเตตัสโนวิซ [LUK +5, AGI +2]',
+          iconImg: '/grf/skill/mc_discount.png',
+          desc: 'เพิ่ม LUK +5 และ AGI +2 ถาวร เพิ่มโอกาสติดคริติคอลและอัตราดรอป'
+        }
+      ];
+      return noviceCards.sort(() => 0.5 - Math.random()).slice(0, count);
+    }
+
     const maxOff = this.getMaxOffensiveSlots();
     const maxSup = this.getMaxSupportSlots();
     const offLearned = this.getSkillsByCategory('offensive');

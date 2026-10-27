@@ -394,13 +394,12 @@ export class BattleArena {
       if (Math.abs(ny) > 0.25) this.player.facingBack = ny < 0;
 
       this.player.animTimer += dt;
-      if (this.player.animTimer > 0.065) {
-        this.player.animTimer -= 0.065;
+      if (this.player.animTimer > 0.088) {
+        this.player.animTimer -= 0.088;
         this.player.frameIndex = (this.player.frameIndex + 1) % 8;
       }
     } else {
       this.player.animTimer = 0;
-      this.player.frameIndex = 0;
     }
 
     if (this.player.invulnTime > 0) {
@@ -692,30 +691,46 @@ export class BattleArena {
       if (this.character) this.character.zeny = this.player.zeny;
       this.spawnDamageNumber(this.player.x, this.player.y - 20, `+${d.value} Z`, '#ffd700');
     } else if (d.type === 'potion') {
-      audio.playCastSound('holy');
-      if (d.potDef && d.potDef.sp > 0) {
-        this.player.sp = Math.min(this.player.maxSp, this.player.sp + d.potDef.sp);
-        this.spawnDamageNumber(this.player.x, this.player.y - 20, `+${d.potDef.sp} SP`, '#74b9ff');
-      } else {
-        const healAmt = d.value || 85;
-        this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmt);
-        this.spawnDamageNumber(this.player.x, this.player.y - 20, `+${healAmt} HP`, '#ff3366');
-      }
-      // Collect into bag so player keeps potions found in map!
-      if (this.player.items && Array.isArray(this.player.items.use)) {
-        const pId = d.itemId || 'use_red_potion';
-        const existing = this.player.items.use.find(it => it && it.id === pId);
-        if (existing) {
-          existing.count = (existing.count || 1) + 1;
+      const isHpPot = !d.potDef || !d.potDef.sp;
+      const isSpPot = d.potDef && d.potDef.sp > 0;
+      const isFull = isHpPot ? (this.player.hp >= this.player.maxHp - 0.5) : (this.player.sp >= this.player.maxSp - 0.5);
+
+      if (!isFull) {
+        // Player is hurt -> Drink and heal immediately!
+        audio.playCastSound('holy');
+        if (isSpPot) {
+          this.player.sp = Math.min(this.player.maxSp, this.player.sp + d.potDef.sp);
+          this.spawnDamageNumber(this.player.x, this.player.y - 20, `+${d.potDef.sp} SP`, '#74b9ff');
         } else {
-          this.player.items.use.push({
-            id: pId,
-            name: d.label || 'Red Potion',
-            type: 'use',
-            count: 1,
-            icon: d.iconUrl || 'assets/items/red_potion.png',
-            desc: `ฟื้นฟู ${d.value} ${d.potDef && d.potDef.sp ? 'SP' : 'HP'}`
-          });
+          const healAmt = d.value || 85;
+          this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmt);
+          this.spawnDamageNumber(this.player.x, this.player.y - 20, `+${healAmt} HP`, '#2ecc71');
+        }
+      } else {
+        // Player HP is 100% full -> Do not waste potion! Collect into bag to use later!
+        audio.playCoinSound();
+        const potName = d.label || (isHpPot ? 'Red Potion' : 'Blue Potion');
+        this.spawnDamageNumber(this.player.x, this.player.y - 20, `📦 +1 ${potName} (เก็บเข้ากระเป๋า)`, '#f1c40f');
+
+        const useList = this.character?.items?.use || this.player?.items?.use;
+        if (Array.isArray(useList)) {
+          const pId = d.itemId || (isHpPot ? 'use_red_potion' : 'use_blue_potion');
+          const existing = useList.find(it => it && it.id === pId);
+          if (existing) {
+            existing.count = (existing.count || 1) + 1;
+          } else {
+            useList.push({
+              id: pId,
+              name: potName,
+              type: 'use',
+              count: 1,
+              icon: d.iconUrl || (isHpPot ? 'assets/items/red_potion.png' : 'assets/items/blue_potion.png'),
+              desc: `ฟื้นฟู ${d.value || 85} ${isSpPot ? 'SP' : 'HP'}`
+            });
+          }
+          if (this.uiManager && this.uiManager.renderQuickUsableBar) {
+            this.uiManager.renderQuickUsableBar();
+          }
         }
       }
     } else if (d.type === 'etc_loot' || d.type === 'ore_drop') {
@@ -789,6 +804,14 @@ export class BattleArena {
           this.character.skillPoints = (this.character.skillPoints || 0) + 1;
         }
         this.spawnDamageNumber(this.player.x, this.player.y - 62, `🌟 JOB LEVEL UP! J.Lv.${this.player.jobLevel}`, '#74b9ff', true);
+        if (this.player.jobLevel >= 10 && (this.character?.jobId === 'novice' || this.player.branch === 'novice')) {
+          if (!this._notifiedJob10) {
+            this._notifiedJob10 = true;
+            if (this.uiManager && this.uiManager.showROBroadcast) {
+              this.uiManager.showROBroadcast('⚔️ [เปลี่ยนอาชีพได้แล้ว!]: Job Level 10 แล้ว! สามารถกลับไปเมือง Prontera เพื่อเปลี่ยนอาชีพได้ทันที!', 'success');
+            }
+          }
+        }
       }
     } else {
       this.player.jobExp = 0;
@@ -814,8 +837,9 @@ export class BattleArena {
 
   triggerLevelUp() {
     this.paused = true;
-    const myBranch = this.character?.branch || this.player.branch || 'swordsman';
-    const myTier = this.character?.tier ?? this.player.tier ?? 1;
+    const isNovice = (this.character?.jobId === 'novice' || this.player.branch === 'novice');
+    const myBranch = isNovice ? 'novice' : (this.character?.branch || this.player.branch || 'swordsman');
+    const myTier = isNovice ? 0 : (this.character?.tier ?? this.player.tier ?? 1);
 
     const maxOff = this.skillManager.getMaxOffensiveSlots();
     const maxSup = this.skillManager.getMaxSupportSlots();
@@ -995,9 +1019,12 @@ export class BattleArena {
     // 1. Render authentic RO .gnd 3D Ground Map (/grf/groundmap/<mapCode>.png)
     const gndImg = this.stageInfo?.groundMapImg ? this.zoneTextures[this.stageInfo.groundMapImg] : null;
     if (gndImg && gndImg.complete && gndImg.width > 0) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false; // Pixel-art crisp rendering: 100% sharp textures without blur
       ctx.drawImage(gndImg, -half, -half, arenaSize, arenaSize);
+      ctx.restore();
       // Draw subtle arena boundary frame
-      ctx.strokeStyle = 'rgba(255, 215, 0, 0.35)';
+      ctx.strokeStyle = 'rgba(255, 215, 0, 0.45)';
       ctx.lineWidth = 4;
       ctx.strokeRect(-half + 40, -half + 40, arenaSize - 80, arenaSize - 80);
       return;
@@ -1013,6 +1040,8 @@ export class BattleArena {
     const tex = this.stageInfo?.tex ? this.zoneTextures[this.stageInfo.tex] : null;
     const hasTex = tex && tex.complete && tex.width > 0;
 
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
     for (let x = startX; x <= endX; x += tileSize) {
       for (let y = startY; y <= endY; y += tileSize) {
         if (hasTex) {
@@ -1023,6 +1052,7 @@ export class BattleArena {
         }
       }
     }
+    ctx.restore();
   }
 
   drawDrops(ctx) {
@@ -1162,9 +1192,9 @@ export class BattleArena {
         ctx.scale(-1, 1);
       }
 
-      // Draw anchored so that (anchorX=55, anchorY=105) on the 110x120 canvas lands EXACTLY at (0, 18) on the shadow!
+      // Draw anchored so that ground contact row 112 on the 110x120 canvas lands EXACTLY at (0, 18) on the shadow!
       const drawX = -sw / 2;
-      const drawY = 18 - sh * (105 / 120);
+      const drawY = 18 - sh * (112 / 120);
       ctx.drawImage(currentImg, drawX, drawY, sw, sh);
 
       // Authentic RO Equipment Overlays (Headgear, Weapon, Shield)
@@ -1209,7 +1239,7 @@ export class BattleArena {
       const hImg = getEquipImg(headgear.icon || headgear.collection);
       if (hImg) {
         const hw = 26, hh = 26;
-        ctx.drawImage(hImg, -hw / 2, -sh * (105 / 120) + 4 + walkBob, hw, hh);
+        ctx.drawImage(hImg, -hw / 2, -sh * (112 / 120) + 4 + walkBob, hw, hh);
       }
     }
 

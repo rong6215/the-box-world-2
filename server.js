@@ -339,7 +339,7 @@ function renderGroundMapPng(mapCode) {
 
     const gnd = parseGND(gndBuf);
     const texImgs = gnd.textures.map(t => decodeBmpRaw(grfSet.get(`data\\texture\\${t}`), false));
-    const cellPx = gnd.width > 220 ? 3 : 4;
+    const cellPx = gnd.width > 220 ? 6 : 8;
     const W = gnd.width * cellPx;
     const H = gnd.height * cellPx;
     const out = Buffer.alloc(W * H * 4);
@@ -433,8 +433,15 @@ function getMonsterFramePng(targetSpec) {
     const canvasRgba = Buffer.alloc(cw * ch * 4);
 
     let actionIdx = 8 + dirIdx;
+    let mirrorX = false;
     if (act.length <= 8) {
       actionIdx = dirIdx % act.length;
+    } else if (act.length < 16) {
+      // 5-direction monster format: 0..4 (South, SW, West, NW, North). Directions 5, 6, 7 mirror 3, 2, 1
+      const mapDir = [0, 1, 2, 3, 4, 3, 2, 1][dirIdx % 8];
+      mirrorX = dirIdx >= 5;
+      actionIdx = 8 + mapDir;
+      if (actionIdx >= act.length) actionIdx = 8;
     } else if (actionIdx >= act.length) {
       actionIdx = 8;
     }
@@ -446,11 +453,13 @@ function getMonsterFramePng(targetSpec) {
       for (const patch of (actFrame.patches || [])) {
         if (patch.sprNo < 0 || !spr[patch.sprNo]) continue;
         const sf = spr[patch.sprNo];
-        const left = Math.round(ax + patch.x - sf.width / 2);
+        const px = mirrorX ? -patch.x : patch.x;
+        const patchMirror = mirrorX ? !patch.mirror : Boolean(patch.mirror);
+        const left = Math.round(ax + px - sf.width / 2);
         const top = Math.round(ay + patch.y - sf.height / 2);
         for (let y = 0; y < sf.height; y++) {
           for (let x = 0; x < sf.width; x++) {
-            const srcX = patch.mirror ? (sf.width - 1 - x) : x;
+            const srcX = patchMirror ? (sf.width - 1 - x) : x;
             const si = (y * sf.width + srcX) * 4;
             if (sf.rgba[si + 3] === 0) continue;
             const dx = left + x, dy = top + y;
@@ -732,10 +741,17 @@ const server = http.createServer((req, res) => {
       return;
     }
 
+    const isCodeOrMarkup = ext === '.html' || ext === '.css' || ext === '.js' || ext === '.json';
+    const cacheHeader = isCodeOrMarkup
+      ? 'no-cache, no-store, must-revalidate, max-age=0'
+      : 'public, max-age=86400';
+
     res.writeHead(200, {
       'Content-Type': contentType,
       'Content-Length': stats.size,
-      'Cache-Control': 'no-cache'
+      'Cache-Control': cacheHeader,
+      'Pragma': 'no-cache',
+      'Expires': '0'
     });
     fs.createReadStream(filePath).pipe(res);
   });

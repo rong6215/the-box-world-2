@@ -15,7 +15,7 @@ export function getMonsterSprites(sprName, fallbackPool) {
   const dirs = [];
   for (let d = 0; d < 8; d++) {
     const frames = [];
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 16; i++) {
       const img = new Image();
       img.src = `/grf/monster/${key}_d${d}_${i}.png`;
       frames.push(img);
@@ -337,9 +337,9 @@ export class Monster {
     }
 
     this.animTimer += dt;
-    if (this.animTimer > 0.08) {
-      this.animTimer -= 0.08;
-      this.frameIndex = (this.frameIndex + 1) % 8;
+    if (this.animTimer > 0.088) {
+      this.animTimer -= 0.088;
+      this.frameIndex = (this.frameIndex + 1) % 2520;
     }
   }
 

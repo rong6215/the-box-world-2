@@ -12,7 +12,7 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="style.css?v=2.2" />
 </head>
 <body>
   <div id="game-container">
@@ -414,24 +414,20 @@
       </div>
     </div>
 
-    <!-- NPC 1 Modal: Warp NPC - 200 Stages + All 1,272 RO Maps -->
+    <!-- NPC 1 Modal: Warp NPC - 20 Survivor Zones (200 Stages) -->
     <div id="modal-warp-zones" class="modal-overlay hidden">
       <div class="ro-dialog-window ro-warp-200-win">
         <div class="ro-dialog-header">
-          <div class="ro-dialog-title">🌀 [ Warp NPC - เลือกด่าน & แผนที่ RO ทั้งหมด (1,272 Maps) ]</div>
+          <div class="ro-dialog-title">🌀 [ Warp Portal - เลือกโซนลุยด่าน (20 โซน / 200 ด่าน Survivor) ]</div>
           <button class="ro-dialog-close" onclick="document.getElementById('modal-warp-zones').classList.add('hidden')">✕</button>
         </div>
         <div class="ro-dialog-body">
-          <div class="ro-shop-tabs" style="margin-bottom:6px; display:flex; gap:6px;">
-            <button id="warp-mode-zones" class="ro-shop-tab active" style="flex:1;">🚩 โซนลุยด่าน (20 โซน)</button>
-            <button id="warp-mode-allmaps" class="ro-shop-tab" style="flex:1;">🌍 แผนที่ RO ทั้งหมด (1,272 Maps)</button>
-          </div>
-          <div id="warp-search-row" class="hidden" style="margin-bottom:6px; display:flex; gap:6px;">
-            <input type="text" id="warp-map-search" placeholder="ค้นหาชื่อแมพ / รหัสแมพ (เช่น prontera, pay_dun, gl_church, gef_fild)..." style="flex:1; padding:5px 8px; border:1px solid #64748b; border-radius:4px; font-size:11px;" />
+          <div class="ro-zone-header-desc" style="font-size:11px; color:#475569; margin-bottom:8px; padding:4px 8px; background:rgba(241,245,249,0.85); border-radius:4px; border:1px solid #cbd5e1; text-align:center;">
+            ⚔️ กำจัดมอนสเตอร์ตามโควต้าด่านเพื่อเรียกบอส ➔ สังหารบอสสำเร็จเพื่อปลดล็อกด่านถัดไป!
           </div>
           <!-- Zone Selector Tabs (Zone 1..20) -->
           <div id="warp-zone-tabs" class="ro-zone-tabs-scroll"></div>
-          <!-- Selected Zone Info & Stages/Maps Grid -->
+          <!-- Selected Zone Info & Stages Grid -->
           <div id="warp-zone-header" class="ro-zone-info-banner"></div>
           <div id="warp-stages-grid" class="ro-stages-grid"></div>
         </div>
@@ -559,33 +555,180 @@
               </div>
             </div>
 
-            <!-- Blacksmith Cat Furnace Centerpiece & Anvil -->
-            <div class="ro-cat-furnace-stage">
-              <!-- Cute White Cat Furnace Graphic -->
-              <div class="cat-furnace-visual" id="cat-furnace-glow">
-                <div class="cat-furnace-ears"></div>
-                <div class="cat-furnace-eyes"></div>
-                <div class="cat-furnace-mouth"></div>
+            <!-- Ragnarok Authentic Stone Kiln Forge with Animated Cute Flame Spirit (ตรงตามรูปตัวอย่าง) -->
+            <div class="ro-forge-kiln-stage state-idle" id="ro-forge-kiln-stage">
+              <!-- Kiln Stone Archway & Hanging Chains -->
+              <div class="kiln-arch-frame">
+                <div class="kiln-chain left"></div>
+                <div class="kiln-chain right"></div>
+                <div class="kiln-stone-keystone"></div>
               </div>
 
-              <!-- Anvil Item Slot -->
-              <div class="ro-anvil-slot-box" id="refine-anvil-target-box">
-                <img id="refine-selected-item-img" src="" alt="Selected Item" class="hidden" />
-                <span id="refine-empty-anvil-hint" class="anvil-hint-text">เลือกอุปกรณ์จากหน้าต่างขวา</span>
+              <!-- Interior Chamber Background Glow -->
+              <div class="kiln-chamber-backdrop" id="kiln-chamber-backdrop">
+                <!-- Floating Sparks / Motes Layer -->
+                <div class="flame-sparks-chamber" id="flame-sparks-chamber"></div>
+
+                <!-- Animated Cute Flame Spirit (SVG with Reactive Face) -->
+                <div class="flame-spirit-wrapper" id="flame-spirit-wrapper">
+                  <svg class="flame-spirit-svg" viewBox="0 0 160 180" width="124" height="138">
+                    <defs>
+                      <!-- Flame Gradients for Idle / Cool -->
+                      <radialGradient id="flameGlowIdle" cx="50%" cy="65%" r="55%">
+                        <stop offset="0%" stop-color="#ffffff" stop-opacity="1" />
+                        <stop offset="35%" stop-color="#e0f2fe" stop-opacity="0.95" />
+                        <stop offset="70%" stop-color="#7dd3fc" stop-opacity="0.8" />
+                        <stop offset="100%" stop-color="#0284c7" stop-opacity="0" />
+                      </radialGradient>
+                      <linearGradient id="flameBodyIdle" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#ffffff" />
+                        <stop offset="40%" stop-color="#dbeafe" />
+                        <stop offset="80%" stop-color="#93c5fd" />
+                        <stop offset="100%" stop-color="#38bdf8" />
+                      </linearGradient>
+
+                      <!-- Flame Gradients for Forging Heat -->
+                      <radialGradient id="flameGlowForging" cx="50%" cy="65%" r="60%">
+                        <stop offset="0%" stop-color="#ffffff" stop-opacity="1" />
+                        <stop offset="40%" stop-color="#fed7aa" stop-opacity="0.95" />
+                        <stop offset="75%" stop-color="#fb923c" stop-opacity="0.85" />
+                        <stop offset="100%" stop-color="#ea580c" stop-opacity="0" />
+                      </radialGradient>
+                      <linearGradient id="flameBodyForging" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#fff7ed" />
+                        <stop offset="40%" stop-color="#ffedd5" />
+                        <stop offset="80%" stop-color="#fdba74" />
+                        <stop offset="100%" stop-color="#f97316" />
+                      </linearGradient>
+
+                      <!-- Flame Gradients for Success (Blazing Warm Gold & Red) -->
+                      <radialGradient id="flameGlowSuccess" cx="50%" cy="65%" r="65%">
+                        <stop offset="0%" stop-color="#fef9c3" stop-opacity="1" />
+                        <stop offset="30%" stop-color="#fde047" stop-opacity="0.95" />
+                        <stop offset="65%" stop-color="#f97316" stop-opacity="0.9" />
+                        <stop offset="100%" stop-color="#dc2626" stop-opacity="0" />
+                      </radialGradient>
+                      <linearGradient id="flameBodySuccess" x1="0%" y1="0%" x2="0%" y2="100%">
+                        <stop offset="0%" stop-color="#fef08a" />
+                        <stop offset="45%" stop-color="#f97316" />
+                        <stop offset="100%" stop-color="#dc2626" />
+                      </linearGradient>
+
+                      <!-- Flame Gradients for Fail (Puffy Gray Smoke) -->
+                      <radialGradient id="flameGlowFail" cx="50%" cy="65%" r="55%">
+                        <stop offset="0%" stop-color="#f1f5f9" stop-opacity="0.9" />
+                        <stop offset="60%" stop-color="#94a3b8" stop-opacity="0.7" />
+                        <stop offset="100%" stop-color="#475569" stop-opacity="0" />
+                      </radialGradient>
+                    </defs>
+
+                    <!-- Outer Radiant Aura -->
+                    <circle class="flame-aura-circle" cx="80" cy="95" r="65" />
+
+                    <!-- Flame Teardrop Body -->
+                    <path class="flame-body-shape" d="M 80 12 
+                             C 95 45, 138 75, 138 115 
+                             C 138 145, 112 165, 80 165 
+                             C 48 165, 22 145, 22 115 
+                             C 22 75, 65 45, 80 12 Z" />
+
+                    <!-- Inner Core Flame Flicker -->
+                    <path class="flame-core-shape" d="M 80 38 
+                             C 90 60, 118 85, 118 115 
+                             C 118 138, 100 152, 80 152 
+                             C 60 152, 42 138, 42 115 
+                             C 42 85, 70 60, 80 38 Z" fill="#ffffff" opacity="0.65" />
+
+                    <!-- Cute Anime Face Group -->
+                    <g class="flame-face" id="flame-face-group">
+                      <!-- Idle Eyes (Curved cute sly RO eyes) -->
+                      <g class="face-eyes-idle">
+                        <path d="M 52 95 Q 63 88 74 97" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round" fill="none" />
+                        <path d="M 86 97 Q 97 88 108 95" stroke="#1e293b" stroke-width="3.5" stroke-linecap="round" fill="none" />
+                      </g>
+
+                      <!-- Forging Straining Eyes (> <) -->
+                      <g class="face-eyes-forging">
+                        <path d="M 53 92 L 64 97 L 53 103" stroke="#451a03" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                        <path d="M 107 92 L 96 97 L 107 103" stroke="#451a03" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+                        <!-- Sweat Drop sliding down right cheek -->
+                        <path class="flame-sweat-drop" d="M 115 78 C 115 74, 120 70, 120 70 C 120 70, 125 74, 125 78 C 125 82, 120 84, 115 78 Z" fill="#38bdf8" />
+                      </g>
+
+                      <!-- Success Eyes (Ecstatic Joy arcs & blush) -->
+                      <g class="face-eyes-success">
+                        <path d="M 52 97 Q 62 85 72 97" stroke="#450a0a" stroke-width="4" stroke-linecap="round" fill="none" />
+                        <path d="M 88 97 Q 98 85 108 97" stroke="#450a0a" stroke-width="4" stroke-linecap="round" fill="none" />
+                        <ellipse cx="48" cy="106" rx="6" ry="3.5" fill="#f87171" opacity="0.85" />
+                        <ellipse cx="112" cy="106" rx="6" ry="3.5" fill="#f87171" opacity="0.85" />
+                      </g>
+
+                      <!-- Fail Eyes (Crying T T) -->
+                      <g class="face-eyes-fail">
+                        <path d="M 54 90 L 70 90 M 62 90 L 62 104" stroke="#334155" stroke-width="3" stroke-linecap="round" fill="none" />
+                        <path d="M 90 90 L 106 90 M 98 90 L 98 104" stroke="#334155" stroke-width="3" stroke-linecap="round" fill="none" />
+                        <path class="tear-left" d="M 60 106 C 58 114, 66 114, 64 106 Z" fill="#60a5fa" />
+                        <path class="tear-right" d="M 96 106 C 94 114, 102 114, 100 106 Z" fill="#60a5fa" />
+                      </g>
+
+                      <!-- Cat Mouth ω -->
+                      <path class="face-mouth-cat" d="M 69 109 Q 74 116 80 110 Q 86 116 91 109" stroke="#1e293b" stroke-width="3" stroke-linecap="round" fill="none" />
+                      <!-- Big Laughing Open Mouth for Success -->
+                      <path class="face-mouth-happy" d="M 70 106 Q 80 121 90 106 Z" fill="#b91c1c" stroke="#450a0a" stroke-width="2" />
+                      <!-- Sad Downward Mouth for Fail -->
+                      <path class="face-mouth-sad" d="M 72 115 Q 80 108 88 115" stroke="#334155" stroke-width="3" stroke-linecap="round" fill="none" />
+                    </g>
+                  </svg>
+                </div>
+
+                <!-- 3D Pixel SUCCESS / FAILED Banner Overlay (Matches Image 3) -->
+                <div class="ro-refine-outcome-badge hidden" id="ro-refine-outcome-badge">
+                  <div class="outcome-success-banner" id="outcome-success-banner">
+                    <span class="pixel-star star-l">✦</span>
+                    <span class="pixel-success-text">SUCCESS</span>
+                    <span class="pixel-star star-r">✦</span>
+                  </div>
+                  <div class="outcome-failed-banner hidden" id="outcome-failed-banner">
+                    <span class="pixel-failed-text">FAILED</span>
+                  </div>
+                </div>
               </div>
 
-              <!-- Selected Item Title -->
+              <!-- Anvil Item Slot Resting on Stone Platform -->
+              <div class="ro-anvil-platform-wrap">
+                <div class="anvil-decor-hammer" title="Blacksmith Hammer"></div>
+                <div class="ro-anvil-slot-box" id="refine-anvil-target-box">
+                  <img id="refine-selected-item-img" src="" alt="Selected Item" class="hidden" />
+                  <span id="refine-empty-anvil-hint" class="anvil-hint-text">เลือกอุปกรณ์</span>
+                </div>
+                <div class="anvil-decor-sword" title="Forged Blade"></div>
+              </div>
+
+              <!-- Selected Item Title / Refine Result -->
               <div class="ro-refine-item-name" id="refine-selected-item-name">กรุณาเลือกอุปกรณ์ที่จะตีบวก</div>
             </div>
 
-            <!-- Bottom Actions: Upgrade Button & Cancel Button -->
+            <!-- Bottom Actions: Dual Mode Action Buttons (ตรงตามรูปตัวอย่าง) -->
             <div class="ro-refine-actions-row">
-              <button id="btn-do-refine-upgrade" class="ro-btn-upgrade-zeny" disabled>
-                <span class="zeny-circle">Z</span>
-                <span class="upgrade-btn-text">อัพเกรด</span>
-                <span class="upgrade-cost-text" id="refine-cost-display">0 Z</span>
-              </button>
-              <button id="btn-refine-cancel" class="ro-btn-upgrade-cancel" onclick="document.getElementById('modal-refine').classList.add('hidden')">ยกเลิก</button>
+              <!-- Default Ready Mode: Upgrade & Cancel -->
+              <div class="actions-group-ready" id="refine-actions-ready">
+                <button id="btn-do-refine-upgrade" class="ro-btn-upgrade-zeny" disabled>
+                  <span class="zeny-circle">Z</span>
+                  <span class="upgrade-btn-text">อัพเกรด</span>
+                  <span class="upgrade-cost-text" id="refine-cost-display">0 Z</span>
+                </button>
+                <button id="btn-refine-cancel" class="ro-btn-upgrade-cancel" onclick="document.getElementById('modal-refine').classList.add('hidden')">ยกเลิก</button>
+              </div>
+
+              <!-- Outcome Mode: กลับไป & เริ่มอีกครั้ง / อัพเกรดต่อ -->
+              <div class="actions-group-outcome hidden" id="refine-actions-outcome">
+                <button id="btn-refine-outcome-back" class="ro-btn-outcome-back">กลับไป</button>
+                <button id="btn-refine-outcome-again" class="ro-btn-outcome-again">
+                  <span class="zeny-circle">Z</span>
+                  <span class="again-text">เริ่มอีกครั้ง</span>
+                  <span class="again-cost" id="refine-again-cost-display">0 Z</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -728,6 +871,6 @@
     </div>
   </div>
 
-  <script type="module" src="src/main.js"></script>
+  <script type="module" src="src/main.js?v=2.2"></script>
 </body>
 </html>

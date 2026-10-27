@@ -119,45 +119,70 @@ class GameApp {
   }
 
   // Preload authentic 8-directional character sprites (Stand, Walk, Attack) with user's exact gender, hairstyle, and hair color
-  loadActiveCharacterSprites(char) {
+  async loadActiveCharacterSprites(char) {
     if (!char) return;
-    const job = char.jobId || 'novice';
+    const job = char.jobId || char.classKey || 'novice';
     const gender = (char.gender === 'female' || char.gender === 'f') ? 'f' : 'm';
     const hair = char.hairStyle || 1;
     const color = char.hairColor || 'blonde';
 
-    // Preload Stand (8 dirs * 3 frames)
+    const charKey = `${job}_${gender}_h${hair}_c${color}`;
+    if (this._loadedCharKey === charKey && this.spritePool['player_walk_d0']?.length && this.spritePool['player_walk_d0'][0].complete) {
+      return;
+    }
+    this._loadedCharKey = charKey;
+
+    const promises = [];
+
+    // Preload Stand (8 dirs * 3 frames = 24 frames)
     for (let d = 0; d < 8; d++) {
       const standKey = `player_stand_d${d}`;
       this.spritePool[standKey] = [];
       for (let f = 0; f < 3; f++) {
         const img = new Image();
         img.src = `/grf/character/${job}_${gender}_h${hair}_c${color}_stand_d${d}_${f}.png`;
+        promises.push(new Promise((resolve) => {
+          if (img.complete) return resolve();
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+        }));
         this.spritePool[standKey].push(img);
       }
     }
 
-    // Preload Walk (8 dirs * 8 frames)
+    // Preload Walk (8 dirs * 8 frames = 64 alternating step frames)
     for (let d = 0; d < 8; d++) {
       const walkKey = `player_walk_d${d}`;
       this.spritePool[walkKey] = [];
       for (let f = 0; f < 8; f++) {
         const img = new Image();
         img.src = `/grf/character/${job}_${gender}_h${hair}_c${color}_walk_d${d}_${f}.png`;
+        promises.push(new Promise((resolve) => {
+          if (img.complete) return resolve();
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+        }));
         this.spritePool[walkKey].push(img);
       }
     }
 
-    // Preload Attack (8 dirs * 3 frames)
+    // Preload Attack (8 dirs * 3 frames = 24 frames)
     for (let d = 0; d < 8; d++) {
       const atkKey = `player_atk_d${d}`;
       this.spritePool[atkKey] = [];
       for (let f = 0; f < 3; f++) {
         const img = new Image();
         img.src = `/grf/character/${job}_${gender}_h${hair}_c${color}_atk_d${d}_${f}.png`;
+        promises.push(new Promise((resolve) => {
+          if (img.complete) return resolve();
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+        }));
         this.spritePool[atkKey].push(img);
       }
     }
+
+    await Promise.all(promises);
   }
 
   setupUIHandlers() {
@@ -347,6 +372,12 @@ class GameApp {
 
     const duration = 900;
     const startAnim = performance.now();
+    let preloadDone = false;
+    this.loadActiveCharacterSprites(this.activeCharacter).then(() => {
+      preloadDone = true;
+    }).catch(() => {
+      preloadDone = true;
+    });
 
     const updateProgress = (now) => {
       const elapsed = now - startAnim;
@@ -361,7 +392,7 @@ class GameApp {
         else tipText.textContent = 'โหลดข้อมูลเสร็จสมบูรณ์ กำลังเข้าสู่พื้นที่!';
       }
 
-      if (elapsed < duration) {
+      if (elapsed < duration || !preloadDone) {
         requestAnimationFrame(updateProgress);
       } else {
         if (loadingEl) loadingEl.classList.add('hidden');
@@ -396,6 +427,7 @@ class GameApp {
       this.uiManager = new InGameUIManager(this.activeCharacter, this.pronteraWorld);
     } else {
       this.pronteraWorld.player = this.activeCharacter;
+      this.pronteraWorld.loadSprites(this.spritePool);
       this.pronteraWorld.warpToFountain();
       if (this.uiManager) {
         this.uiManager.player = this.activeCharacter;
@@ -481,14 +513,19 @@ class GameApp {
     if (!modalEl || !container) return;
 
     const renderChoices = (currentChoices) => {
-      if (subEl && slotInfo) {
-        let statusNote = `ช่องสกิลโจมตี: ${slotInfo.offCount}/${slotInfo.offMax} | ช่องสกิลซัพพอร์ต: ${slotInfo.supCount}/${slotInfo.supMax}`;
-        if (slotInfo.supCount >= slotInfo.supMax && slotInfo.offCount < slotInfo.offMax) {
-          statusNote += ` (ซัพพอร์ตเต็มแล้ว ➔ สุ่มสกิลโจมตี & อัพเวลแทน)`;
-        } else if (slotInfo.supCount >= slotInfo.supMax && slotInfo.offCount >= slotInfo.offMax) {
-          statusNote += ` (ช่องสกิลครบแล้ว ➔ อัพเลเวลสกิลที่มีอยู่แทน!)`;
+      const isNov = (this.activeCharacter?.jobId === 'novice' || this.activeCharacter?.branch === 'novice');
+      if (subEl) {
+        if (isNov) {
+          subEl.innerHTML = '<span style="color:#ffd700; font-weight:bold;">🔰 [Novice]: คุณยังไม่มีสกิลต่อสู้ กรุณาเก็บเลเวล Job 10 เพื่อไปเปลี่ยนอาชีพที่เมือง Prontera!</span>';
+        } else if (slotInfo) {
+          let statusNote = `ช่องสกิลโจมตี: ${slotInfo.offCount}/${slotInfo.offMax} | ช่องสกิลซัพพอร์ต: ${slotInfo.supCount}/${slotInfo.supMax}`;
+          if (slotInfo.supCount >= slotInfo.supMax && slotInfo.offCount < slotInfo.offMax) {
+            statusNote += ` (ซัพพอร์ตเต็มแล้ว ➔ สุ่มสกิลโจมตี & อัพเวลแทน)`;
+          } else if (slotInfo.supCount >= slotInfo.supMax && slotInfo.offCount >= slotInfo.offMax) {
+            statusNote += ` (ช่องสกิลครบแล้ว ➔ อัพเลเวลสกิลที่มีอยู่แทน!)`;
+          }
+          subEl.textContent = statusNote;
         }
-        subEl.textContent = statusNote;
       }
 
       const myTier = this.activeCharacter?.tier || 0;
@@ -507,9 +544,10 @@ class GameApp {
             this.battleArena.player.zeny = this.activeCharacter.zeny;
           }
           audio.playCoinSound();
+          const isNov = (this.activeCharacter?.jobId === 'novice' || this.activeCharacter?.branch === 'novice');
           const newChoices = this.battleArena.skillManager.getLevelUpChoices(
-            this.activeCharacter?.branch || 'swordsman',
-            this.activeCharacter?.tier ?? 1,
+            isNov ? 'novice' : (this.activeCharacter?.branch || 'swordsman'),
+            isNov ? 0 : (this.activeCharacter?.tier ?? 1),
             3
           );
           renderChoices(newChoices);
@@ -524,8 +562,11 @@ class GameApp {
         const nextLv = skill.nextLv || (curLv + 1);
         const isLevelUp = curLv > 0;
         const isStatBoost = !!skill.isStatBoost;
+        const isNovCard = skill.branch === 'novice';
 
-        const badgeText = isStatBoost
+        const badgeText = isNovCard
+          ? '🔰 สเตตัส / ฟื้นฟูพื้นฐานโนวิซ'
+          : isStatBoost
           ? '🌟 อัพสเตตัสพิเศษ (เมื่อสกิลเต็ม Lv.10)'
           : isLevelUp
           ? `⬆️ อัพเลเวลสกิล (Lv.${curLv} ➔ Lv.${nextLv}/10)`

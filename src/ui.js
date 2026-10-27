@@ -1574,6 +1574,45 @@ export class InGameUIManager {
         }
       };
     }
+
+    // Outcome Back Button (กลับไป)
+    const backBtn = document.getElementById('btn-refine-outcome-back');
+    if (backBtn) {
+      backBtn.onclick = () => {
+        const kilnStage = document.getElementById('ro-forge-kiln-stage');
+        if (kilnStage) kilnStage.className = 'ro-forge-kiln-stage state-idle';
+        const outcomeBadge = document.getElementById('ro-refine-outcome-badge');
+        if (outcomeBadge) outcomeBadge.classList.add('hidden');
+        const actionsReady = document.getElementById('refine-actions-ready');
+        const actionsOutcome = document.getElementById('refine-actions-outcome');
+        if (actionsReady) actionsReady.classList.remove('hidden');
+        if (actionsOutcome) actionsOutcome.classList.add('hidden');
+        this.renderRenewalRefineUI();
+      };
+    }
+
+    // Outcome Again Button (เริ่มอีกครั้ง / อัพเกรดต่อ)
+    const againBtn = document.getElementById('btn-refine-outcome-again');
+    if (againBtn) {
+      againBtn.onclick = () => {
+        const it = this.refineState.selectedItem;
+        if (!it) return;
+        if ((it.refine || 0) >= 10) {
+          this.showROAlert(`ไอเทม [${it.name}] ตีบวกสูงสุด +10 แล้ว!`, 'ตีบวกเต็มแล้ว', '✨');
+          return;
+        }
+        const outcomeBadge = document.getElementById('ro-refine-outcome-badge');
+        if (outcomeBadge) outcomeBadge.classList.add('hidden');
+        const actionsReady = document.getElementById('refine-actions-ready');
+        const actionsOutcome = document.getElementById('refine-actions-outcome');
+        if (actionsReady) actionsReady.classList.remove('hidden');
+        if (actionsOutcome) actionsOutcome.classList.add('hidden');
+        const req = getRefineRequirements(it);
+        if (req) {
+          this.performRefine(it, this.refineState.selectedListKey, req);
+        }
+      };
+    }
   }
 
   renderRenewalRefineUI() {
@@ -1652,6 +1691,18 @@ export class InGameUIManager {
     const costDisplay = document.getElementById('refine-cost-display');
     const upgradeBtn = document.getElementById('btn-do-refine-upgrade');
 
+    const kilnStage = document.getElementById('ro-forge-kiln-stage');
+    const outcomeBadge = document.getElementById('ro-refine-outcome-badge');
+    const actionsReady = document.getElementById('refine-actions-ready');
+    const actionsOutcome = document.getElementById('refine-actions-outcome');
+
+    if (kilnStage && !kilnStage.classList.contains('state-forging')) {
+      kilnStage.className = 'ro-forge-kiln-stage state-idle';
+    }
+    if (outcomeBadge) outcomeBadge.classList.add('hidden');
+    if (actionsReady) actionsReady.classList.remove('hidden');
+    if (actionsOutcome) actionsOutcome.classList.add('hidden');
+
     const hexOreSlot = document.getElementById('hex-ore-slot');
     const hexOreIcon = document.getElementById('hex-ore-icon');
     const hexOreCount = document.getElementById('hex-ore-count');
@@ -1680,7 +1731,10 @@ export class InGameUIManager {
     }
 
     if (!item) {
-      if (rateFill) rateFill.style.width = '0%';
+      if (rateFill) {
+        rateFill.style.width = '0%';
+        rateFill.style.background = 'linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)';
+      }
       if (rateLabel) rateLabel.textContent = 'สำเร็จ 0%';
       if (anvilImg) anvilImg.classList.add('hidden');
       if (anvilHint) anvilHint.classList.remove('hidden');
@@ -1699,7 +1753,10 @@ export class InGameUIManager {
     const canAfford = (this.player.zeny || 0) >= req.zenyCost && ownedOre >= 1;
 
     // Rate display
-    if (rateFill) rateFill.style.width = `${req.successRate}%`;
+    if (rateFill) {
+      rateFill.style.width = `${req.successRate}%`;
+      rateFill.style.background = 'linear-gradient(90deg, #3b82f6 0%, #60a5fa 100%)';
+    }
     if (rateLabel) {
       rateLabel.textContent = req.canBreak ? `สำเร็จ ${req.successRate}% (มีโอกาสแตก)` : `สำเร็จ ${req.successRate}% (ระยะปลอดภัย 100%)`;
     }
@@ -1758,16 +1815,14 @@ export class InGameUIManager {
       return;
     }
 
-    const useHdStoneCheckbox = document.getElementById('refine-use-hd-stone');
-    const wantsHdStone = useHdStoneCheckbox && useHdStoneCheckbox.checked;
     let usingHdStone = false;
-
     if (req.canBreak) {
-      if (wantsHdStone && this.getOwnedCount('mat_hd_stone') > 0) {
+      const hdCount = this.getOwnedCount('mat_hd_stone');
+      if (hdCount > 0) {
         usingHdStone = true;
       } else {
         const confirmRisk = await this.showROConfirm(
-          `⚠️ คำเตือนจากช่างตีบวก Hollgrehenn!\n\nการตีบวก [${item.name}] ขึ้น +${req.nextRefine} มีโอกาสสำเร็จเพียง ${req.successRate}%!\nคุณไม่มี/ไม่ได้ใช้ Blessing Ore (หินกันแตก) — หากล้มเหลว อุปกรณ์ชิ้นนี้จะแตกสลายหายไปถาวร!\n\nยืนยันที่จะเสี่ยงตีบวกหรือไม่?`,
+          `⚠️ คำเตือนจากเตาหลอม!\n\nการตีบวก [${item.name}] ขึ้น +${req.nextRefine} มีโอกาสสำเร็จเพียง ${req.successRate}%!\nคุณไม่มี/ไม่ได้ใช้ Blessing Ore (หินกันแตก) — หากล้มเหลว อุปกรณ์ชิ้นนี้จะแตกสลายหายไปถาวร!\n\nยืนยันที่จะเสี่ยงตีบวกหรือไม่?`,
           'คำเตือนความเสี่ยงตีบวก',
           '⚠️'
         );
@@ -1785,113 +1840,81 @@ export class InGameUIManager {
     const roll = Math.random() * 100;
     const isSuccess = roll < req.successRate;
 
-    // Launch authentic centered Hollgrehenn Refine Sequence!
-    this.animateHollgrehennRefine(item, listKey, req, isSuccess, usingHdStone);
+    // Launch In-Kiln Animated Flame Spirit Sequence (ตรงตามรูปตัวอย่าง)
+    this.animateKilnFlameRefine(item, listKey, req, isSuccess, usingHdStone);
   }
 
-  animateHollgrehennRefine(item, listKey, req, isSuccess, usingHdStone) {
-    const modal = document.getElementById('modal-refine-anim');
-    if (!modal) return;
+  animateKilnFlameRefine(item, listKey, req, isSuccess, usingHdStone) {
+    const kilnStage = document.getElementById('ro-forge-kiln-stage');
+    const outcomeBadge = document.getElementById('ro-refine-outcome-badge');
+    const successBanner = document.getElementById('outcome-success-banner');
+    const failedBanner = document.getElementById('outcome-failed-banner');
+    const actionsReady = document.getElementById('refine-actions-ready');
+    const actionsOutcome = document.getElementById('refine-actions-outcome');
+    const upgradeBtn = document.getElementById('btn-do-refine-upgrade');
+    const nameLabel = document.getElementById('refine-selected-item-name');
+    const anvilBox = document.getElementById('refine-anvil-target-box');
+    const againCostDisplay = document.getElementById('refine-again-cost-display');
 
-    const itemTargetImg = document.getElementById('refine-item-target');
-    const hammerEl = document.getElementById('refine-hammer');
-    const sparksLayer = document.getElementById('refine-sparks');
-    const speechEl = document.getElementById('refine-speech-box');
-    const dot1 = document.getElementById('refine-dot-1');
-    const dot2 = document.getElementById('refine-dot-2');
-    const dot3 = document.getElementById('refine-dot-3');
-    const banner = document.getElementById('refine-outcome-banner');
-    const outcomeImg = document.getElementById('refine-outcome-img');
-    const outcomeBadge = document.getElementById('refine-outcome-badge');
-    const finishBtn = document.getElementById('btn-refine-finish-ok');
-    const closeBtn = document.getElementById('btn-refine-anim-close');
+    if (upgradeBtn) upgradeBtn.disabled = true;
+    if (outcomeBadge) outcomeBadge.classList.add('hidden');
+    if (actionsReady) actionsReady.classList.remove('hidden');
+    if (actionsOutcome) actionsOutcome.classList.add('hidden');
 
-    if (itemTargetImg) {
-      itemTargetImg.src = item.icon || 'assets/items/sword.png';
-      itemTargetImg.style.opacity = '1';
-      itemTargetImg.style.transform = 'scale(1)';
-    }
-    if (banner) banner.classList.add('hidden');
-    if (finishBtn) finishBtn.classList.add('hidden');
-    if (dot1) dot1.classList.remove('active');
-    if (dot2) dot2.classList.remove('active');
-    if (dot3) dot3.classList.remove('active');
-    if (hammerEl) hammerEl.classList.remove('striking');
-    if (speechEl) speechEl.innerHTML = `"วาง <strong>${item.name}</strong> ลงบนทั่งตีเหล็ก... ข้าจะเริ่มทุบแล้วนะ!"`;
+    // Step 0: Set Flame Spirit to Forging State! (trembles, squints, sweat drop)
+    if (kilnStage) kilnStage.className = 'ro-forge-kiln-stage state-forging';
 
-    modal.classList.remove('hidden');
-
-    const spawnSparks = (count = 14) => {
-      if (!sparksLayer) return;
-      sparksLayer.innerHTML = '';
+    const spawnAnvilSparks = (count = 14) => {
+      if (!anvilBox) return;
       for (let i = 0; i < count; i++) {
         const sp = document.createElement('div');
-        sp.className = 'refine-spark-particle';
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 18 + Math.random() * 32;
+        sp.className = 'anvil-spark-burst';
+        const angle = -Math.PI / 2 + (Math.random() - 0.5) * 1.8;
+        const dist = 16 + Math.random() * 28;
         sp.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
-        sp.style.setProperty('--ty', `${Math.sin(angle) * dist - 8}px`);
-        sparksLayer.appendChild(sp);
+        sp.style.setProperty('--ty', `${Math.sin(angle) * dist}px`);
+        anvilBox.appendChild(sp);
+        setTimeout(() => sp.remove(), 400);
       }
     };
 
-    // Strike 1
+    // Strike 1 (0.4s)
     setTimeout(() => {
-      if (hammerEl) {
-        hammerEl.classList.remove('striking');
-        void hammerEl.offsetWidth;
-        hammerEl.classList.add('striking');
+      audio.playRefineClank(1);
+      spawnAnvilSparks(12);
+      if (anvilBox) {
+        anvilBox.style.transform = 'scale(1.1)';
+        setTimeout(() => { if (anvilBox) anvilBox.style.transform = 'scale(1)'; }, 100);
       }
-      setTimeout(() => {
-        audio.playRefineClank(1);
-        spawnSparks(12);
-        if (dot1) dot1.classList.add('active');
-        if (speechEl) speechEl.innerHTML = '"Tink..."';
-        if (itemTargetImg) itemTargetImg.style.transform = 'scale(1.15)';
-        setTimeout(() => { if (itemTargetImg) itemTargetImg.style.transform = 'scale(1)'; }, 100);
-      }, 190);
     }, 400);
 
-    // Strike 2
+    // Strike 2 (1.2s)
     setTimeout(() => {
-      if (hammerEl) {
-        hammerEl.classList.remove('striking');
-        void hammerEl.offsetWidth;
-        hammerEl.classList.add('striking');
+      audio.playRefineClank(2);
+      spawnAnvilSparks(16);
+      if (anvilBox) {
+        anvilBox.style.transform = 'scale(1.15)';
+        setTimeout(() => { if (anvilBox) anvilBox.style.transform = 'scale(1)'; }, 100);
       }
-      setTimeout(() => {
-        audio.playRefineClank(2);
-        spawnSparks(16);
-        if (dot2) dot2.classList.add('active');
-        if (speechEl) speechEl.innerHTML = '"Tink... Tink..."';
-        if (itemTargetImg) itemTargetImg.style.transform = 'scale(1.2)';
-        setTimeout(() => { if (itemTargetImg) itemTargetImg.style.transform = 'scale(1)'; }, 100);
-      }, 190);
-    }, 1250);
+    }, 1200);
 
-    // Strike 3 (Final heavy clank!)
+    // Strike 3 - Final Clank! (2.0s)
     setTimeout(() => {
-      if (hammerEl) {
-        hammerEl.classList.remove('striking');
-        void hammerEl.offsetWidth;
-        hammerEl.classList.add('striking');
+      audio.playRefineClank(1);
+      spawnAnvilSparks(24);
+      if (anvilBox) {
+        anvilBox.style.transform = 'scale(1.22)';
+        setTimeout(() => { if (anvilBox) anvilBox.style.transform = 'scale(1)'; }, 120);
       }
-      setTimeout(() => {
-        audio.playRefineClank(1);
-        spawnSparks(24);
-        if (dot3) dot3.classList.add('active');
-        if (speechEl) speechEl.innerHTML = '"Clank!!"';
-        if (itemTargetImg) itemTargetImg.style.transform = 'scale(1.3)';
-        setTimeout(() => { if (itemTargetImg) itemTargetImg.style.transform = 'scale(1)'; }, 100);
-      }, 190);
-    }, 2100);
+    }, 2000);
 
-    // Reveal Result
+    // Outcome Reveal (2.4s)
     setTimeout(() => {
-      if (banner) banner.classList.remove('hidden');
-
       if (isSuccess) {
+        // Success State: Blazing warm flame, ecstatic face, 3D SUCCESS banner
+        if (kilnStage) kilnStage.className = 'ro-forge-kiln-stage state-success';
         audio.playRefineSuccess();
+
         item.refine = req.nextRefine;
         const baseName = item.baseName || item.name.replace(/^\+\d+\s+/, '').replace(/\s*\[\d+\]$/, '');
         const slotSuffix = item.slots > 0 ? ` [${item.slots}]` : '';
@@ -1904,63 +1927,64 @@ export class InGameUIManager {
         if (item.def > 0 || !req.isWeapon) item.def = (item.baseDef || item.def || 10) + item.refine * bonusDefPerLv;
         item.sellPrice = (item.sellPrice || 300) + 250 * item.refine;
 
-        if (outcomeImg) outcomeImg.src = 'assets/effects/suc_refine.png';
-        if (outcomeBadge) {
-          outcomeBadge.className = 'refine-outcome-text success';
-          outcomeBadge.innerHTML = `✨ ตีบวกสำเร็จ!! [${item.name}] ✨`;
+        if (nameLabel) nameLabel.textContent = `✨ ${item.name} ✨`;
+
+        const rateFill = document.getElementById('refine-rate-fill');
+        const rateLabel = document.getElementById('refine-rate-label');
+        if (rateFill) {
+          rateFill.style.width = '100%';
+          rateFill.style.background = 'linear-gradient(90deg, #f59e0b 0%, #ef4444 100%)';
         }
-        if (speechEl) speechEl.innerHTML = `"สำเร็จแล้ว!! <strong>${item.name}</strong> แข็งแกร่งขึ้นอย่างเห็นได้ชัด!"`;
-        this.showROBroadcast(`✨ [Hollgrehenn]: ตีบวกอุปกรณ์ [${item.name}] สำเร็จแล้ว!! ✨`, 'success');
+        if (rateLabel) rateLabel.textContent = 'อัพเกรดสำเร็จ 100%';
+
+        if (successBanner) successBanner.classList.remove('hidden');
+        if (failedBanner) failedBanner.classList.add('hidden');
+        if (outcomeBadge) outcomeBadge.classList.remove('hidden');
+
+        this.showROBroadcast(`✨ [เตาหลอม]: ตีบวกอุปกรณ์ [${item.name}] สำเร็จแล้ว!! ✨`, 'success');
+
+        // Next Refine info
+        const nextReq = getRefineRequirements(item);
+        if (againCostDisplay) {
+          againCostDisplay.textContent = nextReq ? `${nextReq.zenyCost.toLocaleString()} Z` : 'MAX';
+        }
+
       } else {
+        // Failed State: Smoky gray flame, crying face, FAILED banner
+        if (kilnStage) kilnStage.className = 'ro-forge-kiln-stage state-fail';
         audio.playRefineFailed();
-        if (outcomeImg) outcomeImg.src = 'assets/effects/fai_refine.png';
 
         if (usingHdStone) {
-          if (outcomeBadge) {
-            outcomeBadge.className = 'refine-outcome-text fail';
-            outcomeBadge.innerHTML = `🛡️ คุ้มครองด้วย Blessing Ore!`;
-          }
-          if (speechEl) speechEl.innerHTML = `"เกือบไปแล้ว! หินกันแตก (Blessing Ore) ส่องแสงปกป้อง <strong>${item.name}</strong> ไว้ได้ ไม่สูญหาย!"`;
+          this.showROAlert(`การตีบวก [${item.name}] ล้มเหลว!\nโชคดีที่คุณใช้ Blessing Ore อุปกรณ์จึงไม่แตกสลาย!`, 'ป้องกันการแตกสำเร็จ', '🛡️');
           this.showROBroadcast(`🛡️ [Blessing Ore]: ส่องแสงปกป้อง [${item.name}] ไว้ได้ ไม่สูญหาย!`, 'info');
         } else {
-          // Permanently destroyed
-          if (itemTargetImg) {
-            itemTargetImg.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-            itemTargetImg.style.opacity = '0';
-            itemTargetImg.style.transform = 'scale(0.2) rotate(45deg)';
-          }
-          const arr = this.items[listKey] || [];
-          const idx = arr.indexOf(item);
-          if (idx >= 0) arr.splice(idx, 1);
-
-          if (outcomeBadge) {
-            outcomeBadge.className = 'refine-outcome-text fail';
-            outcomeBadge.innerHTML = `💥 อุปกรณ์แตกสลายไปแล้ว... 💥`;
-          }
-          if (speechEl) speechEl.innerHTML = `"แคร้งงง!! ล้มเหลว... ข้าขอโทษด้วย อุปกรณ์ <strong>${item.name}</strong> แตกสลายหายไปแล้ว..."`;
-          this.showROBroadcast(`💥 [Hollgrehenn]: การตีบวกอุปกรณ์ [${item.name}] ล้มเหลว... อุปกรณ์แตกสลาย! 💥`, 'fail');
+          // Item Broken!
+          const targetList = this.items[listKey] || [];
+          const idx = targetList.indexOf(item);
+          if (idx >= 0) targetList.splice(idx, 1);
+          this.refineState.selectedItem = null;
+          if (nameLabel) nameLabel.textContent = `[${item.name}] แตกสลายหายไปแล้ว...`;
+          const anvilImg = document.getElementById('refine-selected-item-img');
+          const anvilHint = document.getElementById('refine-empty-anvil-hint');
+          if (anvilImg) anvilImg.classList.add('hidden');
+          if (anvilHint) anvilHint.classList.remove('hidden');
+          this.showROBroadcast(`💥 [เตาหลอม]: การตีบวกอุปกรณ์ [${item.name}] ล้มเหลว... อุปกรณ์แตกสลาย! 💥`, 'fail');
         }
+
+        if (successBanner) successBanner.classList.add('hidden');
+        if (failedBanner) failedBanner.classList.remove('hidden');
+        if (outcomeBadge) outcomeBadge.classList.remove('hidden');
+
+        if (againCostDisplay) againCostDisplay.textContent = '0 Z';
       }
 
-      if (finishBtn) finishBtn.classList.remove('hidden');
+      // Switch bottom buttons to Outcome Mode (กลับไป / เริ่มอีกครั้ง)
+      if (actionsReady) actionsReady.classList.add('hidden');
+      if (actionsOutcome) actionsOutcome.classList.remove('hidden');
 
-      const onFinish = () => {
-        modal.classList.add('hidden');
-        if (finishBtn) finishBtn.onclick = null;
-        if (closeBtn) closeBtn.onclick = null;
-        if (this.refineState && this.refineState.selectedItem) {
-          const arr = this.items[listKey] || [];
-          if (!arr.includes(this.refineState.selectedItem)) {
-            this.refineState.selectedItem = null;
-          }
-        }
-        this.refreshAll();
-        this.renderRenewalRefineUI();
-      };
-
-      if (finishBtn) finishBtn.onclick = onFinish;
-      if (closeBtn) closeBtn.onclick = onFinish;
-    }, 2850);
+      this.refreshAll();
+      this.renderRenewalRefineInventoryGrid();
+    }, 2400);
   }
 
   // ==========================================================================

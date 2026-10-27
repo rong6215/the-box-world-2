@@ -271,8 +271,8 @@ export class PronteraWorld {
   makeSprite() {
     const mat = new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.5, depthWrite: true });
     const s = new THREE.Sprite(mat);
-    // Authentic RO anchor row 105 out of 120 (15/120 = 0.125 from bottom)
-    s.center.set(0.5, 0.125);
+    // Authentic RO ground anchor row 112 out of 120 (8/120 = 0.0667 from bottom)
+    s.center.set(0.5, (120 - 112) / 120);
     s.visible = false;
     return s;
   }
@@ -294,9 +294,10 @@ export class PronteraWorld {
 
   setSpriteImage(sprite, img, heightUnits, flip = false, colorHex = 0xffffff) {
     const t = this.imgTexture(img);
-    if (!t) { sprite.visible = false; return; }
+    if (!t) return;
     if (sprite.material.map !== t) {
       sprite.material.map = t;
+      sprite.material.needsUpdate = true;
     }
     if (colorHex !== undefined && sprite.material.color && sprite.material.color.getHex() !== colorHex) {
       sprite.material.color.setHex(colorHex);
@@ -306,7 +307,21 @@ export class PronteraWorld {
     sprite.visible = true;
   }
 
-  loadSprites(spritePool) { this.spritePool = spritePool; }
+  loadSprites(spritePool) {
+    this.spritePool = spritePool;
+    if (spritePool) {
+      for (const key of Object.keys(spritePool)) {
+        if (key.startsWith('player_')) {
+          const frames = spritePool[key] || [];
+          for (const img of frames) {
+            if (img && img.complete && img.width > 0) {
+              this.imgTexture(img);
+            }
+          }
+        }
+      }
+    }
+  }
 
   // ---------------------------------------------------------------- map queries
   isWalkable(x, y) {
@@ -604,15 +619,15 @@ export class PronteraWorld {
       }
     }
 
+    p.isMoving = moving;
     if (moving) {
       p.animTimer += dt;
-      if (p.animTimer > 0.065) {
-        p.animTimer -= 0.065;
+      if (p.animTimer > 0.088) {
+        p.animTimer -= 0.088;
         p.frameIndex = (p.frameIndex + 1) % 8;
       }
     } else {
       p.animTimer = 0;
-      p.frameIndex = 0;
     }
 
     if (this.clickMarker) { this.clickMarker.t -= dt; if (this.clickMarker.t <= 0) this.clickMarker = null; }
@@ -654,7 +669,7 @@ export class PronteraWorld {
 
     // Check if moving: player_walk_d0..d7 (8 frames)
     // If standing idle: player_stand_d0..d7 (3-frame gentle breathing stand pose)
-    const isWalking = (p.animTimer > 0) || (this.path && this.path.length > 0);
+    const isWalking = Boolean(p.isMoving);
     if (isWalking) {
       const walkFrames = this.spritePool?.[`player_walk_d${dir8}`];
       if (walkFrames && walkFrames.length) {
@@ -668,7 +683,7 @@ export class PronteraWorld {
     } else {
       const standFrames = this.spritePool?.[`player_stand_d${dir8}`];
       if (standFrames && standFrames.length) {
-        const idleIdx = Math.floor(this.animTime * 3) % standFrames.length;
+        const idleIdx = Math.floor(this.animTime * 2.5) % standFrames.length;
         currentImg = standFrames[idleIdx] || standFrames[0];
         flipHoriz = false;
       } else {
@@ -679,8 +694,8 @@ export class PronteraWorld {
     }
 
     this.setSpriteImage(this.playerSprite, currentImg, 16, flipHoriz);
-    // Lift player slightly (+0.4) so feet are 100% visible and never submerged in 3D ground geometry!
-    this.playerSprite.position.copy(this.toWorld(p.gx, p.gy, 0.4));
+    // Ground level contact (+0.2) so feet walk naturally on 3D ground geometry
+    this.playerSprite.position.copy(this.toWorld(p.gx, p.gy, 0.2));
     for (const n of this.npcs) {
       const imgs = this.spritePool[n.sprite] || [];
       this.setSpriteImage(n.sprite3d, imgs[0], 15, false);
@@ -720,15 +735,56 @@ export class PronteraWorld {
   }
 
   drawBubble(ctx, x, y, label) {
-    ctx.font = '11px Tahoma, sans-serif';
+    ctx.save();
+    ctx.font = 'bold 11px Tahoma, sans-serif';
     const tw = ctx.measureText(label).width;
-    const w = tw + 30, h = 20, bx = Math.round(x - w / 2), by = Math.round(y - h);
-    ctx.fillStyle = 'rgba(255,255,255,0.95)'; ctx.strokeStyle = '#7b8aa0'; ctx.lineWidth = 1;
-    this.roundRect(ctx, bx, by, w, h, 4, true, true);
-    ctx.beginPath(); ctx.moveTo(x - 4, by + h); ctx.lineTo(x, by + h + 5); ctx.lineTo(x + 4, by + h); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#6a5acd'; ctx.fillRect(bx + 5, by + 4, 12, 12);
-    ctx.fillStyle = '#fff'; ctx.fillRect(bx + 7, by + 6, 8, 6);
-    ctx.fillStyle = '#000'; ctx.textAlign = 'left'; ctx.fillText(label, bx + 22, by + 14);
+    const w = tw + 28, h = 24;
+    // Clamp to screen bounds so it never clips out of frame!
+    const pad = 10;
+    const bx = Math.max(pad, Math.min(this.canvas.width - w - pad, Math.round(x - w / 2)));
+    const by = Math.max(pad, Math.min(this.canvas.height - h - pad, Math.round(y - h)));
+
+    // Cute bubble shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+
+    // Cute bubble background (subtle ivory-white gradient with cute rounded border)
+    const bgGrad = ctx.createLinearGradient(bx, by, bx, by + h);
+    bgGrad.addColorStop(0, '#ffffff');
+    bgGrad.addColorStop(1, '#f1f5f9');
+    ctx.fillStyle = bgGrad;
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 1.5;
+    this.roundRect(ctx, bx, by, w, h, 6, true, true);
+
+    // Cute speech bubble tail pointing to NPC
+    ctx.shadowBlur = 0;
+    const tailX = Math.max(bx + 12, Math.min(bx + w - 12, x));
+    ctx.beginPath();
+    ctx.moveTo(tailX - 5, by + h);
+    ctx.lineTo(tailX, by + h + 6);
+    ctx.lineTo(tailX + 5, by + h);
+    ctx.closePath();
+    ctx.fillStyle = '#f1f5f9';
+    ctx.fill();
+    ctx.strokeStyle = '#94a3b8';
+    ctx.stroke();
+
+    // Cute indicator dot / badge
+    ctx.beginPath();
+    ctx.arc(bx + 12, by + h / 2, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#3b82f6';
+    ctx.fill();
+    ctx.strokeStyle = '#60a5fa';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Text label
+    ctx.fillStyle = '#1e293b';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, bx + 20, by + 16);
+    ctx.restore();
   }
 
   roundRect(ctx, x, y, w, h, r, fill, stroke) {
