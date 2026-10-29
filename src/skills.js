@@ -1433,6 +1433,10 @@ export class SkillManager {
     for (let i = this.aoeEffects.length - 1; i >= 0; i--) {
       const aoe = this.aoeEffects[i];
       aoe.life -= dt;
+      if (aoe.followPlayer) {
+        aoe.x = this.player.x;
+        aoe.y = this.player.y;
+      }
       if (aoe.tickInterval) {
         aoe.tickTimer = (aoe.tickTimer || 0) - dt;
         if (aoe.tickTimer <= 0) {
@@ -1503,71 +1507,107 @@ export class SkillManager {
     const px = this.player.x;
     const py = this.player.y;
     const atkType = this.player.attackType || 'melee_slash';
-    const maxRange = (atkType === 'bow_arrow' || atkType === 'magic_bolt') ? 260 : 95;
+    // 360-Degree Circular AoE around character (hits ALL surrounding monsters!)
+    const aoeRange = (atkType === 'bow_arrow' || atkType === 'magic_bolt') ? 165 : 120;
 
-    let target = null;
-    let bestDist = maxRange;
+    const inRange = [];
+    let closest = null;
+    let closestDist = aoeRange + 50;
     for (const m of monsters) {
       if (!m.alive) continue;
       const d = Math.hypot(m.x - px, m.y - py);
-      if (d <= bestDist) {
-        bestDist = d;
-        target = m;
+      if (d <= aoeRange + (m.radius || 18)) {
+        inRange.push(m);
+        if (d < closestDist) {
+          closestDist = d;
+          closest = m;
+        }
       }
     }
-    if (!target) return false;
+    if (inRange.length === 0) return false;
 
-    const angle = Math.atan2(target.y - py, target.x - px);
-    this.player.facingAngle = angle;
-    this.player.facingLeft = Math.cos(angle) < 0;
-    if (Math.abs(Math.sin(angle)) > 0.35) {
-      this.player.facingBack = Math.sin(angle) < 0;
+    if (closest) {
+      const angle = Math.atan2(closest.y - py, closest.x - px);
+      this.player.facingAngle = angle;
+      this.player.facingLeft = Math.cos(angle) < 0;
+      if (Math.abs(Math.sin(angle)) > 0.35) {
+        this.player.facingBack = Math.sin(angle) < 0;
+      }
     }
     this.player.attackTimer = 0.28;
     this.player.attackAnimDuration = 0.28;
 
     const baseDmg = Math.max(12, Math.round(effAtk * 0.98));
 
+    // Spawn 360-degree Sweeping Shockwave / Slash Ring centered on player
+    this.aoeEffects.push({
+      type: 'circle_slash',
+      x: px,
+      y: py,
+      radius: aoeRange,
+      life: 0.32,
+      maxLife: 0.32,
+      followPlayer: true,
+      color: atkType === 'magic_bolt' ? '#74b9ff' : (atkType === 'bow_arrow' ? '#55efc4' : '#ffeaa7')
+    });
+
     if (atkType === 'bow_arrow') {
       audio.playBowAttack();
-      this.projectiles.push({
-        type: 'arrow',
-        x: px,
-        y: py,
-        vx: Math.cos(angle) * 11,
-        vy: Math.sin(angle) * 11,
-        angle,
-        radius: 6,
-        life: 1.2,
-        damage: baseDmg,
-        critRate,
-        hitSpr: 'ef_slash1',
-        pierce: 1
-      });
+      const arrowCount = 8;
+      for (let i = 0; i < arrowCount; i++) {
+        const a = (i * Math.PI * 2) / arrowCount;
+        this.projectiles.push({
+          type: 'arrow',
+          x: px,
+          y: py,
+          vx: Math.cos(a) * 11,
+          vy: Math.sin(a) * 11,
+          angle: a,
+          radius: 6,
+          life: 0.8,
+          damage: baseDmg,
+          critRate,
+          hitSpr: 'ef_slash1',
+          pierce: 2
+        });
+      }
     } else if (atkType === 'magic_bolt') {
       audio.playCastSound('fire');
-      this.projectiles.push({
-        type: 'magic_orb',
-        x: px,
-        y: py,
-        vx: Math.cos(angle) * 9.5,
-        vy: Math.sin(angle) * 9.5,
-        angle,
-        radius: 7,
-        life: 1.2,
-        damage: baseDmg,
-        critRate,
-        color: '#74b9ff',
-        hitSpr: 'ef_fireball',
-        pierce: 1
-      });
+      const boltCount = 6;
+      for (let i = 0; i < boltCount; i++) {
+        const a = (i * Math.PI * 2) / boltCount;
+        this.projectiles.push({
+          type: 'magic_orb',
+          x: px,
+          y: py,
+          vx: Math.cos(a) * 9.5,
+          vy: Math.sin(a) * 9.5,
+          angle: a,
+          radius: 7,
+          life: 0.8,
+          damage: baseDmg,
+          critRate,
+          color: '#74b9ff',
+          hitSpr: 'ef_fireball',
+          pierce: 2
+        });
+      }
     } else {
       audio.playSwordAttack();
-      this.spawnSprAnim('ef_slash1', target.x, target.y, 0.22, 1.15);
+      for (let k = 0; k < 4; k++) {
+        const sa = (k * Math.PI / 2) + Math.random() * 0.35;
+        const sr = aoeRange * 0.58;
+        this.spawnSprAnim('ef_slash1', px + Math.cos(sa) * sr, py + Math.sin(sa) * sr, 0.22, 1.15);
+      }
+    }
+
+    // Damage every single enemy in the 360-degree circle!
+    for (const target of inRange) {
       const isCrit = Math.random() * 100 < critRate;
-      const dmg = Math.round(baseDmg * (isCrit ? 1.6 : 1));
+      const dmg = Math.round(baseDmg * (isCrit ? 1.6 : 1.0));
       target.takeDamage(dmg, isCrit, spawnDamageNumber);
-      for (let k = 0; k < 3; k++) spawnParticle(target.x, target.y, isCrit ? '#ffea00' : '#ffffff');
+      this.spawnSprAnim('ef_slash2', target.x, target.y, 0.2, 0.95);
+      for (let k = 0; k < 2; k++) spawnParticle(target.x, target.y, isCrit ? '#ffea00' : '#ffffff');
       this.applyOnHitPassives(dmg, target, monsters, spawnDamageNumber);
     }
     return true;
@@ -2125,6 +2165,18 @@ export class SkillManager {
         } else if (fb && fb.complete && fb.width > 0) {
           ctx.drawImage(fb, -sz / 2, -sz / 2, sz, sz);
         }
+        // Additional fiery shockwave ring & rising sparks
+        ctx.strokeStyle = '#ff7675';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, aoe.radius * (1.2 - prog * 0.4), 0, Math.PI * 2);
+        ctx.stroke();
+        for (let s = 0; s < 4; s++) {
+          const sa = s * Math.PI * 0.5 + prog * 4;
+          const sr = aoe.radius * (0.3 + (1 - prog) * 0.7);
+          ctx.fillStyle = '#ffeaa7';
+          ctx.fillRect(Math.cos(sa) * sr - 2, Math.sin(sa) * sr - 2, 4, 4);
+        }
       } else if (aoe.type === 'ro_vermilion') {
         const sg = this.effects.storm_god;
         const tb = this.effects.thunder_blast;
@@ -2135,6 +2187,17 @@ export class SkillManager {
           ctx.drawImage(sg, -sz / 2, -sz / 2, sz, sz);
         } else if (tb && tb.complete && tb.width > 0) {
           ctx.drawImage(tb, -sz / 2, -sz / 2, sz, sz);
+        }
+        // Branching electric discharge bolts
+        ctx.strokeStyle = '#00d2d3';
+        ctx.lineWidth = 2.5;
+        for (let b = 0; b < 6; b++) {
+          const ba = (b * Math.PI) / 3;
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(Math.cos(ba) * aoe.radius * 0.5, Math.sin(ba) * aoe.radius * 0.5);
+          ctx.lineTo(Math.cos(ba + 0.2) * aoe.radius * 0.95, Math.sin(ba + 0.2) * aoe.radius * 0.95);
+          ctx.stroke();
         }
       } else if (aoe.type === 'ro_holy_cross') {
         const hc = this.effects.holy_cross;
@@ -2147,6 +2210,51 @@ export class SkillManager {
         if (hc && hc.complete && hc.width > 0) {
           ctx.drawImage(hc, -sz * 0.48, -sz * 0.48, sz * 0.96, sz * 0.96);
         }
+        // Radiant vertical holy pillar of light beam
+        const grad = ctx.createLinearGradient(0, aoe.radius * 0.5, 0, -aoe.radius * 1.8);
+        grad.addColorStop(0, 'rgba(255, 234, 167, 0.45)');
+        grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.75)');
+        grad.addColorStop(1, 'rgba(255, 234, 167, 0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(-aoe.radius * 0.4, -aoe.radius * 1.8, aoe.radius * 0.8, aoe.radius * 2.3);
+        // Floating holy cross sparkles
+        ctx.fillStyle = '#ffffff';
+        for (let k = 0; k < 3; k++) {
+          const kx = (k - 1) * 24;
+          const ky = -aoe.radius * (0.4 + (1 - prog) * 0.9) - k * 8;
+          ctx.fillRect(kx - 1, ky - 4, 2, 8);
+          ctx.fillRect(kx - 4, ky - 1, 8, 2);
+        }
+      } else if (aoe.type === 'circle_slash') {
+        const sl = this.effects.slash;
+        const radius = aoe.radius * (0.75 + (1 - prog) * 0.35);
+        ctx.globalAlpha = Math.min(1, prog * 1.6);
+
+        // 4 Rotating Crescent Blade Trails in 360 degrees
+        if (sl && sl.complete && sl.width > 0) {
+          for (let k = 0; k < 4; k++) {
+            ctx.save();
+            ctx.rotate((k * Math.PI) / 2 + (1 - prog) * Math.PI * 0.85);
+            ctx.drawImage(sl, -radius, -radius * 0.45, radius * 2, radius * 0.9);
+            ctx.restore();
+          }
+        }
+
+        // Glowing 360-degree shockwave ring
+        ctx.beginPath();
+        ctx.arc(0, 0, radius, 0, Math.PI * 2);
+        ctx.strokeStyle = aoe.color || '#ffeaa7';
+        ctx.lineWidth = 3.5 * prog;
+        ctx.shadowColor = aoe.color || '#fdcb6e';
+        ctx.shadowBlur = 10;
+        ctx.stroke();
+
+        // Inner sharp circular gleam
+        ctx.beginPath();
+        ctx.arc(0, 0, radius * 0.7, 0, Math.PI * 2);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2.0 * prog;
+        ctx.stroke();
       } else if (aoe.type === 'spin_blades') {
         ctx.rotate(this.orbitAngle * 2.8);
         ctx.globalAlpha = prog * 0.92;

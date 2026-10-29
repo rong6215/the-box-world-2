@@ -186,10 +186,15 @@ class GameApp {
   }
 
   setupUIHandlers() {
-    // PWA Service Worker Registration
+    // PWA Service Worker Cleanup & Cache Purge
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch((err) => console.log('SW reg error:', err));
+      navigator.serviceWorker.getRegistrations().then((regs) => {
+        for (const reg of regs) reg.unregister();
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then((keys) => {
+        for (const k of keys) caches.delete(k);
       });
     }
 

@@ -12,7 +12,20 @@
   <link rel="manifest" href="manifest.json" />
   <link rel="icon" type="image/x-icon" href="favicon.ico" />
   <link rel="apple-touch-icon" href="icon-192.png" />
-  <link rel="stylesheet" href="style.css?v=2.2" />
+  <link rel="stylesheet" href="style.css?v=20261027_1515" />
+  <script>
+    // Force purge stale Service Worker & CacheStorage immediately
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(regs) {
+        for (var i = 0; i < regs.length; i++) { regs[i].unregister(); }
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(function(names) {
+        for (var j = 0; j < names.length; j++) { caches.delete(names[j]); }
+      });
+    }
+  </script>
 </head>
 <body>
   <div id="game-container">
@@ -290,94 +303,110 @@
       </div>
     </div>
 
-    <!-- Window 1: ความสามารถ (Status / Attributes Window) -->
+    <!-- Window 1: ความสามารถ (Status / Attributes Window - Classic RO [Alt + A]) -->
     <div id="win-status" class="ro-window ro-status-win hidden">
       <div class="ro-win-header">
-        <span class="ro-win-title">📊 ความสามารถ (Status)</span>
+        <span class="ro-win-title">📊 Status [Alt + A]</span>
         <button id="win-status-close" class="ro-win-close">✕</button>
       </div>
       <div class="ro-win-body">
+        <!-- Level & Exp Header -->
+        <div class="ro-classic-status-top">
+          <div class="ro-status-lv-tag">Base Lv. <strong id="status-base-lv">1</strong></div>
+          <div class="ro-status-lv-tag">Job Lv. <strong id="status-job-lv">1</strong></div>
+        </div>
+
         <div class="status-grid">
           <div class="stat-col left">
-            <div class="stat-row"><span class="stat-lbl">Str</span><span id="val-str" class="stat-v">1 +12</span><button id="stat-inc-str" class="btn-inc">▶ <span id="cost-str">2</span></button></div>
-            <div class="stat-row"><span class="stat-lbl">Agi</span><span id="val-agi" class="stat-v">1 +13</span><button id="stat-inc-agi" class="btn-inc">▶ <span id="cost-agi">2</span></button></div>
-            <div class="stat-row"><span class="stat-lbl">Vit</span><span id="val-vit" class="stat-v">1 +1</span><button id="stat-inc-vit" class="btn-inc">▶ <span id="cost-vit">2</span></button></div>
-            <div class="stat-row"><span class="stat-lbl">Int</span><span id="val-int" class="stat-v">50 +12</span><button id="stat-inc-int" class="btn-inc">▶ <span id="cost-int">6</span></button></div>
-            <div class="stat-row"><span class="stat-lbl">Dex</span><span id="val-dex" class="stat-v">68 +10</span><button id="stat-inc-dex" class="btn-inc">▶ <span id="cost-dex">8</span></button></div>
-            <div class="stat-row"><span class="stat-lbl">Luk</span><span id="val-luk" class="stat-v">1 +3</span><button id="stat-inc-luk" class="btn-inc">▶ <span id="cost-luk">2</span></button></div>
+            <div class="stat-row"><span class="stat-lbl">STR</span><span id="val-str" class="stat-v">1 +0</span><button id="stat-inc-str" class="btn-inc">▲ <span id="cost-str">2</span></button></div>
+            <div class="stat-row"><span class="stat-lbl">AGI</span><span id="val-agi" class="stat-v">1 +0</span><button id="stat-inc-agi" class="btn-inc">▲ <span id="cost-agi">2</span></button></div>
+            <div class="stat-row"><span class="stat-lbl">VIT</span><span id="val-vit" class="stat-v">1 +0</span><button id="stat-inc-vit" class="btn-inc">▲ <span id="cost-vit">2</span></button></div>
+            <div class="stat-row"><span class="stat-lbl">INT</span><span id="val-int" class="stat-v">1 +0</span><button id="stat-inc-int" class="btn-inc">▲ <span id="cost-int">2</span></button></div>
+            <div class="stat-row"><span class="stat-lbl">DEX</span><span id="val-dex" class="stat-v">1 +0</span><button id="stat-inc-dex" class="btn-inc">▲ <span id="cost-dex">2</span></button></div>
+            <div class="stat-row"><span class="stat-lbl">LUK</span><span id="val-luk" class="stat-v">1 +0</span><button id="stat-inc-luk" class="btn-inc">▲ <span id="cost-luk">2</span></button></div>
           </div>
 
           <div class="stat-col right">
-            <div class="stat-row"><span class="stat-lbl">Atk</span><span id="val-atk" class="stat-v">44 + 140</span></div>
-            <div class="stat-row"><span class="stat-lbl">Matk</span><span id="val-matk" class="stat-v">123 + 0</span></div>
-            <div class="stat-row"><span class="stat-lbl">Def</span><span id="val-def" class="stat-v">32 + 10</span></div>
-            <div class="stat-row"><span class="stat-lbl">Mdef</span><span id="val-mdef" class="stat-v">92 + 0</span></div>
-            <div class="stat-row"><span class="stat-lbl">Hit</span><span id="val-hit" class="stat-v">332</span></div>
-            <div class="stat-row"><span class="stat-lbl">Flee</span><span id="val-flee" class="stat-v">172 + 1</span></div>
-            <div class="stat-row"><span class="stat-lbl">Critical</span><span id="val-crit" class="stat-v">2</span></div>
-            <div class="stat-row"><span class="stat-lbl">Aspd</span><span id="val-aspd" class="stat-v">165</span></div>
-            <div class="stat-row highlight"><span class="stat-lbl">Status Point</span><span id="val-status-pts" class="stat-v">15</span></div>
+            <div class="stat-row"><span class="stat-lbl">ATK</span><span id="val-atk" class="stat-v">12 + 0</span></div>
+            <div class="stat-row"><span class="stat-lbl">MATK</span><span id="val-matk" class="stat-v">10 + 0</span></div>
+            <div class="stat-row"><span class="stat-lbl">DEF</span><span id="val-def" class="stat-v">5 + 0</span></div>
+            <div class="stat-row"><span class="stat-lbl">MDEF</span><span id="val-mdef" class="stat-v">0 + 0</span></div>
+            <div class="stat-row"><span class="stat-lbl">HIT</span><span id="val-hit" class="stat-v">105</span></div>
+            <div class="stat-row"><span class="stat-lbl">FLEE</span><span id="val-flee" class="stat-v">102</span></div>
+            <div class="stat-row"><span class="stat-lbl">CRIT</span><span id="val-crit" class="stat-v">1%</span></div>
+            <div class="stat-row"><span class="stat-lbl">ASPD</span><span id="val-aspd" class="stat-v">150</span></div>
+            <div class="stat-row highlight"><span class="stat-lbl">Status Point</span><span id="val-status-pts" class="stat-v">0</span></div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Window 2: ช่องเก็บของ (Inventory Window with Costume & Card Tabs) -->
+    <!-- Window 2: ช่องเก็บของ (Inventory Window - Classic RO [Alt + E]) -->
     <div id="win-inventory" class="ro-window ro-inven-win hidden">
       <div class="ro-win-header">
-        <span class="ro-win-title">🎒 ช่องเก็บของ (Inventory)</span>
+        <span class="ro-win-title">🎒 Inventory [Alt + E]</span>
         <button id="win-inven-close" class="ro-win-close">✕</button>
       </div>
       <div class="ro-inven-body">
         <div class="ro-inven-tabs">
-          <button id="inven-tab-use" class="ro-inven-tab active">Use</button>
-          <button id="inven-tab-eqp" class="ro-inven-tab">Eqp</button>
-          <button id="inven-tab-cos" class="ro-inven-tab">Cos</button>
+          <button id="inven-tab-use" class="ro-inven-tab active">Item</button>
+          <button id="inven-tab-eqp" class="ro-inven-tab">Equip</button>
+          <button id="inven-tab-cos" class="ro-inven-tab">Costume</button>
           <button id="inven-tab-card" class="ro-inven-tab">Card</button>
           <button id="inven-tab-etc" class="ro-inven-tab">Etc</button>
         </div>
         <div id="inven-slots-grid" class="ro-inven-grid"></div>
         <div class="ro-inven-footer">
-          <span class="weight-label">⚖️ น้ำหนัก: <strong id="inven-weight-text">13/2000</strong></span>
-          <span class="weight-label" style="margin-left:auto;">💰 <strong id="inven-zeny-text">1,500 Z</strong></span>
+          <span class="weight-label">⚖️ Weight: <strong id="inven-weight-text">0 / 2000</strong></span>
+          <span class="weight-label" style="margin-left:auto;">💰 <strong id="inven-zeny-text">0 Z</strong></span>
         </div>
       </div>
     </div>
 
-    <!-- Window 3: Authentic 10-Slot RO Equipment & 10-Slot Costume/Shadow Window -->
-    <div id="win-equipment" class="ro-window ro-equip-win hidden">
-      <div class="ro-win-header">
-        <span class="ro-win-title">🛡️ สวมใส่อุปกรณ์ & คอสสวมใส่ (10 ช่อง RO แท้)</span>
+    <!-- Window 3: Authentic RO Character & Equipment Window (Exact Match to UI ตัวละคร.png [Alt + C]) -->
+    <div id="win-equipment" class="ro-window ro-char-win hidden">
+      <div class="ro-win-header ro-char-header">
+        <div class="ro-char-header-left">
+          <div class="ro-char-avatar-slot">
+            <img id="char-avatar-img" src="assets/sprites/class_novice_0.png" alt="Avatar" />
+          </div>
+          <span class="ro-win-title">Character [Alt + C]</span>
+        </div>
+        <div class="ro-char-subtabs">
+          <button id="equip-mode-main" class="ro-char-tab-btn active" title="อุปกรณ์หลัก (Equipment)">⚔️</button>
+          <button id="equip-mode-costume" class="ro-char-tab-btn" title="คอสสวมใส่ / Shadow Gear">👑</button>
+        </div>
         <button id="win-equip-close" class="ro-win-close">✕</button>
       </div>
-      <div class="ro-inven-tabs" style="padding:3px 6px; background:#dce4f0; border-bottom:1px solid #8a9bb5;">
-        <button id="equip-mode-main" class="ro-inven-tab active" style="flex:1;">🛡️ อุปกรณ์หลัก (10 ช่อง)</button>
-        <button id="equip-mode-costume" class="ro-inven-tab" style="flex:1;">👑 คอสสวมใส่ / Shadow (10 ช่อง)</button>
-      </div>
-      <div class="ro-equip-10slot-wrap">
-        <!-- Left 5 Slots -->
-        <div id="equip-col-left" class="ro-equip-col left"></div>
+      
+      <div class="ro-char-main-body">
+        <!-- Left 5 Slots (Vertical Stack of Square Boxes) -->
+        <div id="equip-col-left" class="ro-char-slot-col left"></div>
 
-        <!-- Center Character Preview on equipwin_bg -->
-        <div class="ro-equip-center-doll">
+        <!-- Center Paper Doll Sprite -->
+        <div class="ro-char-center-stage">
+          <div class="ro-char-doll-shadow"></div>
           <img id="equip-doll-sprite" src="assets/sprites/class_novice_0.png" alt="Character" />
-          <div id="equip-doll-job" class="ro-equip-doll-job">Novice</div>
+          <div id="equip-doll-job" class="ro-char-doll-job">Novice</div>
         </div>
 
-        <!-- Right 5 Slots -->
-        <div id="equip-col-right" class="ro-equip-col right"></div>
+        <!-- Right 5 Slots (Vertical Stack of Square Boxes) -->
+        <div id="equip-col-right" class="ro-char-slot-col right"></div>
       </div>
     </div>
 
-    <!-- Window 4: สกิลตัวละคร (ระดับสกิลเพิ่มขึ้นอัตโนมัติตาม Job Lv) -->
+    <!-- Window 4: สกิลตัวละคร (Skill Window - Classic RO [Alt + S]) -->
     <div id="win-skills" class="ro-window ro-skills-win hidden">
       <div class="ro-win-header">
-        <span class="ro-win-title">⚡ สกิลตัวละคร (ระดับสกิลเพิ่มขึ้นอัตโนมัติตาม Job Lv)</span>
+        <span class="ro-win-title">⚡ Skill [Alt + S]</span>
         <button id="win-skills-close" class="ro-win-close">✕</button>
       </div>
-      <div class="ro-skills-subheader" style="display:flex; justify-content:space-between; align-items:center; gap:6px; flex-wrap:wrap;">
-        <span id="skills-branch-label">คลาสปัจจุบัน: Novice</span>
-        <button id="btn-reset-skills" class="ro-btn-reset-stat" style="padding:3px 8px; font-size:10px;">🔄 รีเซ็ตสกิล (ใช้ Zeny)</button>
+      <div class="ro-skills-subheader">
+        <span id="skills-branch-label">คลาส: Novice</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="ro-skill-pts-badge">Skill Points: <strong id="val-skill-pts">0</strong></span>
+          <button id="btn-reset-skills" class="ro-btn-reset-stat">🔄 รีเซ็ตสกิล</button>
+        </div>
       </div>
       <div id="skills-list-container" class="ro-skills-body"></div>
     </div>
@@ -681,27 +710,29 @@
                   </svg>
                 </div>
 
-                <!-- 3D Pixel SUCCESS / FAILED Banner Overlay (Matches Image 3) -->
+                <!-- Authentic RO SUCCESS / FAILED Banner Overlay (suc_refine.png / fai_refine.png) -->
                 <div class="ro-refine-outcome-badge hidden" id="ro-refine-outcome-badge">
                   <div class="outcome-success-banner" id="outcome-success-banner">
-                    <span class="pixel-star star-l">✦</span>
-                    <span class="pixel-success-text">SUCCESS</span>
-                    <span class="pixel-star star-r">✦</span>
+                    <img src="assets/effects/suc_refine.png" class="ro-refine-outcome-emblem" alt="SUCCESS" />
                   </div>
                   <div class="outcome-failed-banner hidden" id="outcome-failed-banner">
-                    <span class="pixel-failed-text">FAILED</span>
+                    <img src="assets/effects/fai_refine.png" class="ro-refine-outcome-emblem" alt="FAILED" />
                   </div>
                 </div>
               </div>
 
-              <!-- Anvil Item Slot Resting on Stone Platform -->
+              <!-- Anvil Item Slot Resting on Stone Platform with Hollgrehenn & Authentic Anvil -->
               <div class="ro-anvil-platform-wrap">
-                <div class="anvil-decor-hammer" title="Blacksmith Hammer"></div>
+                <!-- Authentic Hollgrehenn Blacksmith NPC Sprite -->
+                <div class="ro-hollg-smith-wrap" id="ro-hollg-smith-wrap" title="Hollgrehenn">
+                  <img src="assets/effects/refine/hollgrehenn_0.png" id="ro-hollg-smith-img" class="ro-hollg-smith-img" alt="Hollgrehenn" />
+                </div>
+
                 <div class="ro-anvil-slot-box" id="refine-anvil-target-box">
+                  <img src="assets/effects/refine/anvil_0.png" class="ro-anvil-base-img" alt="Anvil" />
                   <img id="refine-selected-item-img" src="" alt="Selected Item" class="hidden" />
                   <span id="refine-empty-anvil-hint" class="anvil-hint-text">เลือกอุปกรณ์</span>
                 </div>
-                <div class="anvil-decor-sword" title="Forged Blade"></div>
               </div>
 
               <!-- Selected Item Title / Refine Result -->
@@ -871,6 +902,6 @@
     </div>
   </div>
 
-  <script type="module" src="src/main.js?v=2.2"></script>
+  <script type="module" src="src/main.js?v=20261027_1515"></script>
 </body>
 </html>

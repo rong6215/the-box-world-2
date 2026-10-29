@@ -439,9 +439,15 @@ export class WaveSpawner {
 
     if (this.spawnTimer >= interval && monsters.length < 110) {
       this.spawnTimer = 0;
-      const pool = (this.stageInfo && this.stageInfo.monsters && this.stageInfo.monsters.length)
+      // Filter out any boss/MVP monsters so regular waves NEVER spawn bosses prematurely!
+      const rawPool = (this.stageInfo && this.stageInfo.monsters && this.stageInfo.monsters.length)
         ? this.stageInfo.monsters
         : ['poring', 'fabre', 'lunatic'];
+      const minionPool = rawPool.filter(k => {
+        const d = MONSTER_TYPES[k];
+        return d && !d.isBoss && !d.isMvp;
+      });
+      const pool = minionPool.length > 0 ? minionPool : ['poring', 'fabre', 'lunatic'];
       const type = pool[Math.floor(Math.random() * pool.length)];
 
       const angle = Math.random() * Math.PI * 2;
@@ -452,11 +458,14 @@ export class WaveSpawner {
       const hpScale = (this.stageInfo ? this.stageInfo.hpScale : 1) * (1 + (gameTime / 120) * 0.25);
       const dmgScale = this.stageInfo ? this.stageInfo.dmgScale : 1;
       const expScale = this.stageInfo ? this.stageInfo.expScale : 1;
-      monsters.push(new Monster(type, sx, sy, this.spritePool, hpScale, dmgScale, expScale));
+      const minion = new Monster(type, sx, sy, this.spritePool, hpScale, dmgScale, expScale);
+      minion.isBoss = false; // Strictly enforce non-boss for regular wave spawn
+      minion.isMvp = false;
+      monsters.push(minion);
     }
 
     // Spawn Stage Boss ONLY after kill quota is fully reached!
-    const quota = this.stageInfo ? this.stageInfo.killQuota : 100;
+    const quota = this.stageInfo ? (this.stageInfo.killQuota || 100) : 100;
     if (!this.stageBossSpawned && stageKills >= quota) {
       this.stageBossSpawned = true;
       const bossType = (this.stageInfo && this.stageInfo.bossType) || 'mastering';

@@ -658,6 +658,11 @@ export class InGameUIManager {
     const st = p.stats;
     const bs = p.bonusStats || {};
 
+    const baseLvEl = document.getElementById('status-base-lv');
+    const jobLvEl = document.getElementById('status-job-lv');
+    if (baseLvEl) baseLvEl.textContent = p.level || 1;
+    if (jobLvEl) jobLvEl.textContent = p.jobLevel || 1;
+
     ['str', 'agi', 'vit', 'int', 'dex', 'luk'].forEach((stat) => {
       const valEl = document.getElementById(`val-${stat}`);
       const costEl = document.getElementById(`cost-${stat}`);
@@ -682,17 +687,25 @@ export class InGameUIManager {
     const rightCol = document.getElementById('equip-col-right');
     const dollImg = document.getElementById('equip-doll-sprite');
     const dollJob = document.getElementById('equip-doll-job');
+    const avatarImg = document.getElementById('char-avatar-img');
     if (!leftCol || !rightCol) return;
 
     leftCol.innerHTML = '';
     rightCol.innerHTML = '';
 
+    const g = (this.player.gender === 'female' || this.player.gender === 'f' || this.player.gender === 'F') ? 'f' : 'm';
+    const job = this.player.jobId || this.player.classKey || 'novice';
+    const hs = this.player.hairStyle || 1;
+    const color = this.player.hairColor || 'blonde';
+    const charSpriteUrl = `/grf/character/${job}_${g}_h${hs}_c${color}_stand_d0_0.png`;
+
+    if (avatarImg) {
+      avatarImg.src = charSpriteUrl;
+      avatarImg.onerror = () => { avatarImg.src = `assets/sprites/class_${job}_0.png`; };
+    }
+
     if (dollImg) {
-      const g = (this.player.gender === 'female' || this.player.gender === 'f' || this.player.gender === 'F') ? 'f' : 'm';
-      const job = this.player.jobId || this.player.classKey || 'novice';
-      const hs = this.player.hairStyle || 1;
-      const color = this.player.hairColor || 'blonde';
-      dollImg.src = `/grf/character/${job}_${g}_h${hs}_c${color}_stand_d0_0.png`;
+      dollImg.src = charSpriteUrl;
       dollImg.onerror = () => {
         dollImg.src = `assets/sprites/class_${job}_0.png`;
       };
@@ -704,31 +717,34 @@ export class InGameUIManager {
     const slotsConfig = isCostumeMode ? COSTUME_SLOTS_10 : EQUIP_SLOTS_10;
     const sourceList = isCostumeMode ? (this.items.cos || []) : (this.items.eqp || []);
 
+    const slotIconMap = {
+      head_top: '👑', head_mid: '👓', head_low: '🧣',
+      armor: '🥋', weapon: '⚔️', shield: '🛡️',
+      garment: '🧥', shoes: '👢', acc1: '💍', acc2: '📿',
+      cos_top: '👑', cos_mid: '🕶️', cos_low: '🌸', cos_garment: '🦋',
+      shadow_armor: '🛡️', shadow_weapon: '🗡️', shadow_shield: '🛡️',
+      shadow_shoes: '🥾', shadow_earring: '✨', shadow_pendant: '🔮'
+    };
+
     slotsConfig.forEach(slotDef => {
       const equipped = sourceList.find(it => it && it.equipped && it.slot === slotDef.key);
       const box = document.createElement('div');
-      box.className = `ro-equip-slot-box ${equipped ? 'has-item' : 'empty-slot'}`;
+      box.className = `ro-char-slot-btn ${equipped ? 'has-item' : 'empty-slot'}`;
+      box.title = equipped ? `${equipped.name} (${slotDef.th || slotDef.label})` : (slotDef.th || slotDef.label);
 
       if (equipped) {
-        const cardDots = equipped.slots ? ` [${(equipped.cards || []).length}/${equipped.slots}◆]` : '';
+        const refineTag = (equipped.refine > 0) ? `<span class="ro-slot-refine-tag">+${equipped.refine}</span>` : '';
         box.innerHTML = `
-          <div class="ro-equip-slot-icon">
-            <img src="${equipped.icon}" alt="${equipped.name}" onerror="this.src='assets/items/sword.png'" />
-          </div>
-          <div class="ro-equip-slot-meta">
-            <span class="ro-equip-slot-lbl">${slotDef.th || slotDef.label}</span>
-            <span class="ro-equip-slot-val" style="color:${equipped.rarityColor || '#1d4ed8'};" title="${equipped.name}${cardDots}">${equipped.name}${cardDots}</span>
-          </div>
+          <img src="${equipped.icon}" alt="${equipped.name}" onerror="this.src='assets/items/sword.png'" />
+          ${refineTag}
         `;
         box.onclick = () => this.openItemDetail(equipped);
       } else {
-        box.innerHTML = `
-          <div class="ro-equip-slot-icon"><span style="font-size:10px; color:#94a3b8;">◇</span></div>
-          <div class="ro-equip-slot-meta">
-            <span class="ro-equip-slot-lbl">${slotDef.th || slotDef.label}</span>
-            <span class="ro-equip-slot-val empty">- ว่าง -</span>
-          </div>
-        `;
+        box.innerHTML = `<span class="ro-slot-empty-icon">${slotIconMap[slotDef.key] || '◇'}</span>`;
+        box.onclick = () => {
+          this.toggleWindow('inventory');
+          this.switchInventoryTab(isCostumeMode ? 'cos' : 'eqp');
+        };
       }
 
       if (slotDef.side === 'left') leftCol.appendChild(box);
@@ -1864,6 +1880,15 @@ export class InGameUIManager {
     // Step 0: Set Flame Spirit to Forging State! (trembles, squints, sweat drop)
     if (kilnStage) kilnStage.className = 'ro-forge-kiln-stage state-forging';
 
+    const hollgImg = document.getElementById('ro-hollg-smith-img');
+    const swingHammer = () => {
+      if (hollgImg) {
+        hollgImg.style.transform = 'rotate(-28deg) translateY(-5px)';
+        setTimeout(() => { if (hollgImg) hollgImg.style.transform = 'rotate(10deg) translateY(3px)'; }, 100);
+        setTimeout(() => { if (hollgImg) hollgImg.style.transform = 'none'; }, 240);
+      }
+    };
+
     const spawnAnvilSparks = (count = 14) => {
       if (!anvilBox) return;
       for (let i = 0; i < count; i++) {
@@ -1881,6 +1906,7 @@ export class InGameUIManager {
     // Strike 1 (0.4s)
     setTimeout(() => {
       audio.playRefineClank(1);
+      swingHammer();
       spawnAnvilSparks(12);
       if (anvilBox) {
         anvilBox.style.transform = 'scale(1.1)';
@@ -1891,6 +1917,7 @@ export class InGameUIManager {
     // Strike 2 (1.2s)
     setTimeout(() => {
       audio.playRefineClank(2);
+      swingHammer();
       spawnAnvilSparks(16);
       if (anvilBox) {
         anvilBox.style.transform = 'scale(1.15)';
@@ -1901,6 +1928,7 @@ export class InGameUIManager {
     // Strike 3 - Final Clank! (2.0s)
     setTimeout(() => {
       audio.playRefineClank(1);
+      swingHammer();
       spawnAnvilSparks(24);
       if (anvilBox) {
         anvilBox.style.transform = 'scale(1.22)';

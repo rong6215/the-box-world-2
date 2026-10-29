@@ -95,6 +95,7 @@ export class BattleArena {
     // Entities
     this.monsters = [];
     this.drops = [];
+    this.props = []; // Authentic RO Environment Props (Trees, Rocks, Barrels, Ruins)
     this.damageNumbers = [];
     this.particles = [];
     this.waveSpawner = new WaveSpawner(spritePool, this.stageInfo);
@@ -197,6 +198,168 @@ export class BattleArena {
     if (this.stageInfo && this.stageInfo.bgm) {
       audio.playStageBgm(this.stageInfo.bgm);
     }
+
+    // Preload Authentic RO Environment Props (Trees, Rocks, Plants, Ruins)
+    this.propSprites = {};
+    const propKeys = [
+      'tree_ancient', 'tree_peach', 'tree_pine',
+      'rock_large', 'rock_purple', 'rock_flat',
+      'plant_blue', 'plant_green', 'plant_red', 'plant_yellow', 'plant_shining',
+      'mushroom_red', 'mushroom_black',
+      'flower_blue', 'flower_red',
+      'headstone0', 'headstone1',
+      'woodbox', 'woodpile', 'runestone', 'cactus'
+    ];
+    for (const key of propKeys) {
+      const img = new Image();
+      img.src = `assets/props/${key}.png`;
+      this.propSprites[key] = img;
+    }
+
+    // Initialize authentic RO environment objects
+    this.initProps();
+  }
+
+  initProps() {
+    this.props = [];
+    const seed = this.stageNum * 997 + (this.stageInfo?.mapCode ? this.stageInfo.mapCode.charCodeAt(0) : 42);
+    let sVal = seed;
+    const rand = () => {
+      sVal = (sVal * 9301 + 49297) % 233280;
+      return sVal / 233280;
+    };
+
+    const code = (this.stageInfo?.mapCode || '').toLowerCase();
+    const isDesert = code.includes('moc') || code.includes('sog') || code.includes('ant');
+    const isDungeon = code.includes('dun') || code.includes('gef') || code.includes('in_') || code.includes('glast') || code.includes('pyramid');
+    const isIce = code.includes('ice') || code.includes('xmas');
+
+    const propCount = 44;
+    for (let i = 0; i < propCount; i++) {
+      let px = (rand() - 0.5) * 2100;
+      let py = (rand() - 0.5) * 2100;
+      if (Math.hypot(px, py) < 180) {
+        px += (px >= 0 ? 220 : -220);
+        py += (py >= 0 ? 220 : -220);
+      }
+
+      let type = 'tree_ancient';
+      const roll = rand();
+
+      if (isDesert) {
+        if (roll < 0.35) type = 'cactus';
+        else if (roll < 0.60) type = 'rock_large';
+        else if (roll < 0.78) type = 'rock_flat';
+        else if (roll < 0.90) type = 'woodbox';
+        else type = 'headstone0';
+      } else if (isDungeon) {
+        if (roll < 0.30) type = 'rock_purple';
+        else if (roll < 0.52) type = 'rock_large';
+        else if (roll < 0.70) type = 'runestone';
+        else if (roll < 0.85) type = 'headstone0';
+        else type = 'mushroom_black';
+      } else if (isIce) {
+        if (roll < 0.40) type = 'tree_pine';
+        else if (roll < 0.65) type = 'rock_purple';
+        else if (roll < 0.82) type = 'rock_large';
+        else if (roll < 0.92) type = 'plant_blue';
+        else type = 'woodbox';
+      } else {
+        // Authentic Prontera / Payon / Geffen lush grassland
+        if (roll < 0.22) type = 'tree_ancient';
+        else if (roll < 0.40) type = 'tree_peach';
+        else if (roll < 0.52) type = 'tree_pine';
+        else if (roll < 0.64) type = 'rock_large';
+        else if (roll < 0.74) {
+          const plants = ['plant_green', 'plant_blue', 'plant_red', 'plant_yellow', 'plant_shining'];
+          type = plants[Math.floor(rand() * plants.length)];
+        } else if (roll < 0.84) {
+          type = rand() < 0.5 ? 'flower_blue' : 'flower_red';
+        } else if (roll < 0.92) {
+          type = rand() < 0.5 ? 'mushroom_red' : 'mushroom_black';
+        } else {
+          type = rand() < 0.5 ? 'woodbox' : 'woodpile';
+        }
+      }
+
+      // Authentic hitbox radius and sprite scaling
+      let radius = 18;
+      let scale = 1.0;
+      let sway = false;
+
+      if (type === 'tree_ancient') {
+        radius = 28; scale = 1.25; sway = true;
+      } else if (type === 'tree_peach') {
+        radius = 22; scale = 1.15; sway = true;
+      } else if (type === 'tree_pine') {
+        radius = 22; scale = 1.20; sway = true;
+      } else if (type === 'rock_large') {
+        radius = 20; scale = 1.25;
+      } else if (type === 'rock_purple') {
+        radius = 19; scale = 1.15;
+      } else if (type === 'rock_flat') {
+        radius = 15; scale = 1.10;
+      } else if (type === 'cactus') {
+        radius = 16; scale = 1.20;
+      } else if (type === 'runestone') {
+        radius = 18; scale = 1.05;
+      } else if (type === 'headstone0' || type === 'headstone1') {
+        radius = 15; scale = 1.10;
+      } else if (type === 'woodbox' || type === 'woodpile') {
+        radius = 16; scale = 1.15;
+      } else if (type.startsWith('plant_')) {
+        radius = 13; scale = 1.30; sway = true;
+      } else if (type.startsWith('mushroom_')) {
+        radius = 11; scale = 1.25;
+      } else if (type.startsWith('flower_')) {
+        radius = 12; scale = 1.10; sway = true;
+      }
+
+      this.props.push({
+        id: `prop_${i}`,
+        x: px,
+        y: py,
+        type,
+        radius,
+        collidable: true,
+        scale: scale * (0.95 + rand() * 0.15),
+        sway
+      });
+    }
+  }
+
+  drawProp(ctx, p) {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    const s = p.scale || 1.0;
+    ctx.scale(s, s);
+
+    // 1. Authentic RO Ground Drop Shadow
+    ctx.beginPath();
+    ctx.ellipse(0, 0, p.radius * 1.2, p.radius * 0.52, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.fill();
+
+    // 2. Authentic RO Sprite Rendering
+    const spr = this.propSprites && this.propSprites[p.type];
+    if (spr && spr.complete && spr.width > 0) {
+      if (p.sway) {
+        const swayAngle = Math.sin(this.gameTime * 2.2 + p.x * 0.05) * 0.035;
+        ctx.rotate(swayAngle);
+      }
+      const w = spr.width;
+      const h = spr.height;
+      // Anchor sprite bottom-center on the prop origin
+      ctx.drawImage(spr, -w / 2, -h + 10, w, h);
+    } else {
+      // Clean fallback while asset loads
+      ctx.beginPath();
+      ctx.arc(0, -p.radius, p.radius, 0, Math.PI * 2);
+      ctx.fillStyle = p.type.startsWith('tree') ? '#2e7d32' : '#78909c';
+      ctx.fill();
+    }
+
+    ctx.restore();
   }
 
   advanceToStage(nextStageNum) {
@@ -388,6 +551,20 @@ export class BattleArena {
       const ny = my / len;
       this.player.x = Math.max(-1120, Math.min(1120, this.player.x + nx * spd));
       this.player.y = Math.max(-1120, Math.min(1120, this.player.y + ny * spd));
+
+      // Prop Collision Avoidance for Player
+      if (this.props) {
+        for (const p of this.props) {
+          const dx = this.player.x - p.x;
+          const dy = this.player.y - p.y;
+          const dist = Math.hypot(dx, dy);
+          const minDist = p.radius + 12;
+          if (dist < minDist && dist > 0.001) {
+            this.player.x = p.x + (dx / dist) * minDist;
+            this.player.y = p.y + (dy / dist) * minDist;
+          }
+        }
+      }
       this.player.facingAngle = Math.atan2(ny, nx);
       this.player.dir8 = this.screenDirTo8(nx, ny);
       if (Math.abs(nx) > 0.08) this.player.facingLeft = nx < 0;
@@ -436,6 +613,20 @@ export class BattleArena {
       // Keep monsters inside map bounds
       m.x = Math.max(-1160, Math.min(1160, m.x));
       m.y = Math.max(-1160, Math.min(1160, m.y));
+
+      // Prop Collision for Monsters
+      if (this.props) {
+        for (const p of this.props) {
+          const dx = m.x - p.x;
+          const dy = m.y - p.y;
+          const dist = Math.hypot(dx, dy);
+          const minDist = p.radius + m.radius * 0.75;
+          if (dist < minDist && dist > 0.001) {
+            m.x = p.x + (dx / dist) * minDist;
+            m.y = p.y + (dy / dist) * minDist;
+          }
+        }
+      }
 
       if (!m.alive) {
         this.player.kills++;
@@ -557,10 +748,10 @@ export class BattleArena {
       jobValue: m.jobExp || Math.round(m.exp * 0.72)
     });
 
-    // 2. Zeny Coins (~40% chance, 100% on boss)
-    if (m.isBoss || Math.random() < 0.40) {
-      let zenyVal = Math.round((8 + Math.random() * 18) * (1 + this.stageNum * 0.16));
-      if (m.isBoss) zenyVal *= 8;
+    // 2. Zeny Coins (~18% chance, 100% on boss - balanced economy)
+    if (m.isBoss || Math.random() < 0.18) {
+      let zenyVal = Math.round((3 + Math.random() * 8) * (1 + this.stageNum * 0.08));
+      if (m.isBoss) zenyVal *= 4;
       if (this.player.zenyBonus > 0) zenyVal = Math.round(zenyVal * (1 + this.player.zenyBonus));
       this.drops.push({
         type: 'zeny',
@@ -572,8 +763,8 @@ export class BattleArena {
       });
     }
 
-    // 3. Common Monster Etc Drop from all 6,982 RO Etc items (~48% chance - easy to find!)
-    if (Math.random() < 0.48) {
+    // 3. Common Monster Etc Drop (~18% chance normal, 100% on Boss - balanced economy!)
+    if (m.isBoss || Math.random() < 0.18) {
       const etcItem = generateLootEtc(this.stageNum);
       this.drops.push({
         type: 'etc_loot',
@@ -586,9 +777,9 @@ export class BattleArena {
       });
     }
 
-    // 4. Map Potion Loot (~14% normal, 100% on Boss) - No potions sold in shop; looted from maps!
+    // 4. Map Potion Loot (~10% normal, 100% on Boss) - No potions sold in shop; looted from maps!
     const potRoll = Math.random();
-    if (m.isBoss || potRoll < 0.14) {
+    if (m.isBoss || potRoll < 0.10) {
       const potDefs = [
         { id: 'use_red_potion', name: 'Red Potion', hp: 85, sp: 0, icon: 'assets/items/red_potion.png', color: '#ff7675' },
         { id: 'use_yellow_potion', name: 'Yellow Potion', hp: 240, sp: 0, icon: 'assets/items/yellow_potion.png', color: '#fdcb6e' },
@@ -894,11 +1085,29 @@ export class BattleArena {
     this.drawDrops(ctx);
     this.skillManager.draw(ctx);
 
-    for (const m of this.monsters) {
-      m.draw(ctx);
+    // Sort Entities (Props, Monsters, Player) by Y for Authentic 2.5D RO Isometric Depth Sorting!
+    const renderList = [];
+    if (this.props) {
+      for (const p of this.props) {
+        renderList.push({ type: 'prop', y: p.y, data: p });
+      }
     }
+    for (const m of this.monsters) {
+      if (m.alive) renderList.push({ type: 'monster', y: m.y, data: m });
+    }
+    renderList.push({ type: 'player', y: this.player.y, data: this.player });
 
-    this.drawPlayer(ctx);
+    renderList.sort((a, b) => a.y - b.y);
+
+    for (const item of renderList) {
+      if (item.type === 'prop') {
+        this.drawProp(ctx, item.data);
+      } else if (item.type === 'monster') {
+        item.data.draw(ctx);
+      } else if (item.type === 'player') {
+        this.drawPlayer(ctx);
+      }
+    }
 
     // Particles & Critical Starbursts
     for (const pt of this.particles) {
@@ -1456,6 +1665,18 @@ export class BattleArena {
     } else {
       ctx.fillStyle = '#1e272e';
       ctx.fillRect(viewX, viewY, viewW, viewH);
+    }
+
+    // 2.5 Props Dots on Minimap
+    if (this.props) {
+      for (const p of this.props) {
+        const pnx = (p.x + 1200) / 2400;
+        const pny = (p.y + 1200) / 2400;
+        const px = viewX + pnx * viewW;
+        const py = viewY + pny * viewH;
+        ctx.fillStyle = p.type.startsWith('tree') ? 'rgba(76, 175, 80, 0.75)' : 'rgba(144, 164, 174, 0.75)';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+      }
     }
 
     // 3. Drops Dots on Minimap

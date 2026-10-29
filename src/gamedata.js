@@ -1577,14 +1577,17 @@ export function generateLootCard(stageNum = 1, monsterTypeKey = '') {
 export function generateLootEtc(stageNum = 1) {
   if (RO_DB.loaded && RO_DB.etcs.length > 0) {
     const picked = RO_DB.etcs[Math.floor(Math.random() * RO_DB.etcs.length)];
+    // Authentic RO NPC sell price: small realistic values (2 - 60 Zeny) to prevent runaway economy inflation
+    const baseP = picked.price ? Math.round(picked.price * 0.25) : Math.round(4 + stageNum * 1.2);
+    const balancedSellPrice = Math.max(2, Math.min(80, baseP));
     return {
       id: `ro_etc_${picked.id}`,
       numId: picked.id,
       name: picked.name,
       type: 'etc',
       count: 1,
-      weight: picked.weight || 8,
-      sellPrice: Math.max(15, Math.min(5000, picked.price || (20 + stageNum * 4))),
+      weight: picked.weight || 6,
+      sellPrice: balancedSellPrice,
       icon: `/grf/icon/${picked.id}.png`,
       collection: `/grf/collection/${picked.id}.png`,
       desc: picked.desc || `ขยะดรอปจากมอนสเตอร์ใน RO (ID: ${picked.id})`
@@ -1595,8 +1598,8 @@ export function generateLootEtc(stageNum = 1) {
     name: 'Jellopy (เจโลปี้)',
     type: 'etc',
     count: 1,
-    weight: 6,
-    sellPrice: 18 + stageNum * 3,
+    weight: 4,
+    sellPrice: 3 + Math.min(15, Math.floor(stageNum * 0.5)),
     icon: 'assets/items/jellopy.png',
     collection: 'assets/collection/jellopy.png',
     desc: 'ผลึกเมือกใสจากมอนสเตอร์ นำไปขายที่ร้านค้าในเมืองได้'

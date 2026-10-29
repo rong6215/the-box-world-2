@@ -415,9 +415,12 @@ function getMonsterFramePng(targetSpec) {
   try {
     let decoded = monsterSprCache.get(sprName);
     if (!decoded) {
-      const sprBuf = grfSet.get(`data\\sprite\\몬스터\\${sprName}.spr`);
-      if (!sprBuf) return null;
-      const actBuf = grfSet.get(`data\\sprite\\몬스터\\${sprName}.act`);
+      let sprBuf = grfSet.get(`data\\sprite\\몬스터\\${sprName}.spr`);
+      let actBuf = grfSet.get(`data\\sprite\\몬스터\\${sprName}.act`);
+      if (!sprBuf) {
+        sprBuf = grfSet.get(`data\\sprite\\npc\\${sprName}.spr`);
+        actBuf = grfSet.get(`data\\sprite\\npc\\${sprName}.act`);
+      }
       decoded = {
         spr: decodeSPR(sprBuf),
         act: parseAct(actBuf)
