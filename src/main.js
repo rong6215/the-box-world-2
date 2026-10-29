@@ -414,7 +414,18 @@ class GameApp {
 
   enterWorld() {
     this.state = 'WORLD';
+    if (this.battleArena && this.battleArena.player && this.activeCharacter) {
+      if (this.battleArena.player.hp > 0) {
+        this.activeCharacter.hp = Math.max(1, Math.round(this.battleArena.player.hp));
+        this.activeCharacter.sp = Math.max(0, Math.round(this.battleArena.player.sp));
+      } else {
+        // Died in dungeon -> Respawn in Prontera with full HP / SP
+        this.activeCharacter.hp = this.activeCharacter.maxHp;
+        this.activeCharacter.sp = this.activeCharacter.maxSp;
+      }
+    }
     this.battle = null;
+    this.battleArena = null;
     audio.playBgm('town');
     document.getElementById('btn-battle-town')?.classList.add('hidden');
 
@@ -488,9 +499,9 @@ class GameApp {
       ...playerCfg,
       id: spriteKey,
       name: this.activeCharacter.jobName || this.activeCharacter.name,
-      hp: this.activeCharacter.maxHp || 250,
+      hp: (typeof this.activeCharacter.hp === 'number' && this.activeCharacter.hp > 0) ? this.activeCharacter.hp : (this.activeCharacter.maxHp || 250),
       maxHp: this.activeCharacter.maxHp || 250,
-      sp: this.activeCharacter.maxSp || 100,
+      sp: (typeof this.activeCharacter.sp === 'number') ? this.activeCharacter.sp : (this.activeCharacter.maxSp || 100),
       maxSp: this.activeCharacter.maxSp || 100,
       atk: this.activeCharacter.atk || 50,
       def: this.activeCharacter.def || 25

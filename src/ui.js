@@ -561,10 +561,23 @@ export class InGameUIManager {
     p.critical = p.crit;
     p.aspd = Math.min(193, 152 + Math.floor(Math.sqrt(totAgi * 9 + totDex * 2)) + bonusAspd + (p.tempAspdBonus || 0));
 
+    const prevMaxHp = p.maxHp;
     p.maxHp = Math.round((160 + lv * 35 + totVit * 22 + eqHp) * (jDef.hpMod || 1));
+    const prevMaxSp = p.maxSp;
     p.maxSp = Math.round((60 + lv * 12 + totInt * 14 + eqSp) * (jDef.spMod || 1));
-    if (!p.hp || p.hp > p.maxHp) p.hp = p.maxHp;
-    if (!p.sp || p.sp > p.maxSp) p.sp = p.maxSp;
+
+    // If player was at full HP previously, or hp is missing/invalid, keep full HP!
+    if (p.hp === undefined || p.hp === null || !prevMaxHp || p.hp >= prevMaxHp || p.hp <= 0) {
+      p.hp = p.maxHp;
+    } else {
+      p.hp = Math.min(p.maxHp, Math.max(1, p.hp));
+    }
+
+    if (p.sp === undefined || p.sp === null || !prevMaxSp || p.sp >= prevMaxSp) {
+      p.sp = p.maxSp;
+    } else {
+      p.sp = Math.min(p.maxSp, Math.max(0, p.sp));
+    }
 
     // Weight Limit Calculation (STR increases maxWeight by +30 per base STR!)
     let totalWeight = 0;
@@ -607,17 +620,22 @@ export class InGameUIManager {
 
   renderBasicInfo() {
     const p = this.player;
+    if (!p) return;
     const set = (id, txt) => { const el = document.getElementById(id); if (el) el.textContent = txt; };
-    set('hud-player-name', p.name);
+    set('hud-player-name', p.name || 'Novice');
     set('hud-player-zeny', `💰 ${(p.zeny || 0).toLocaleString()} Z`);
-    set('hud-player-joblv', `Lv.${p.baseLv || 1} / ${(p.jobName || p.job).split(' (')[0]} / J.Lv.${p.jobLv || 1}`);
-    set('hud-hp-text', `${Math.round(p.hp)} / ${p.maxHp}`);
-    set('hud-sp-text', `${Math.round(p.sp)} / ${p.maxSp}`);
+    set('hud-player-joblv', `Lv.${p.baseLv || 1} / ${(p.jobName || p.job || 'Novice').split(' (')[0]} / J.Lv.${p.jobLv || 1}`);
+    const curHp = (typeof p.hp === 'number') ? Math.max(0, Math.round(p.hp)) : (p.maxHp || 100);
+    const maxHp = p.maxHp || 100;
+    const curSp = (typeof p.sp === 'number') ? Math.max(0, Math.round(p.sp)) : (p.maxSp || 30);
+    const maxSp = p.maxSp || 30;
+    set('hud-hp-text', `${curHp} / ${maxHp}`);
+    set('hud-sp-text', `${curSp} / ${maxSp}`);
 
     const hpBar = document.getElementById('hud-hp-bar');
     const spBar = document.getElementById('hud-sp-bar');
-    if (hpBar) hpBar.style.width = `${Math.min(100, Math.round((p.hp / p.maxHp) * 100))}%`;
-    if (spBar) spBar.style.width = `${Math.min(100, Math.round((p.sp / p.maxSp) * 100))}%`;
+    if (hpBar) hpBar.style.width = `${Math.min(100, Math.max(0, Math.round((curHp / maxHp) * 100)))}%`;
+    if (spBar) spBar.style.width = `${Math.min(100, Math.max(0, Math.round((curSp / maxSp) * 100)))}%`;
   }
 
   // Render 4-Slot Quick Usable / Potion Hotbar on screen (usable in Battle & Town!)
@@ -1056,12 +1074,13 @@ export class InGameUIManager {
 
   useItem(item, fromQuickBar = false) {
     const p = this.player;
-    const battle = window.gameApp?.battle;
+    const battle = window.gameApp?.battleArena || window.gameApp?.battle;
     if (item.effect === 'hp' || !item.effect) {
       const val = item.val || 120;
       p.hp = Math.min(p.maxHp, p.hp + val);
       if (battle && battle.player) {
         battle.player.hp = Math.min(battle.player.maxHp, battle.player.hp + val);
+        p.hp = battle.player.hp;
         battle.spawnDamageNumber(battle.player.x, battle.player.y - 25, `+${val} HP`, '#2ecc71', true);
       }
       audio.playCastSound('holy');
@@ -1070,6 +1089,7 @@ export class InGameUIManager {
       p.sp = Math.min(p.maxSp, p.sp + val);
       if (battle && battle.player) {
         battle.player.sp = Math.min(battle.player.maxSp, battle.player.sp + val);
+        p.sp = battle.player.sp;
         battle.spawnDamageNumber(battle.player.x, battle.player.y - 25, `+${val} SP`, '#74b9ff', true);
       }
       audio.playCoinSound();

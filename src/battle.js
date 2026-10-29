@@ -46,10 +46,14 @@ export class BattleArena {
       hairStyle: this.character?.hairStyle || 1,
       hairColor: this.character?.hairColor || 'blonde',
       classKey: this.character?.classKey || 'novice',
-      hp: this.character?.maxHp || playerConfig.hp || 150,
-      maxHp: this.character?.maxHp || playerConfig.hp || 150,
-      sp: this.character?.maxSp || 100,
-      maxSp: this.character?.maxSp || 100,
+      hp: (typeof this.character?.hp === 'number' && this.character.hp > 0)
+        ? Math.min(this.character.maxHp || playerConfig.maxHp || 250, this.character.hp)
+        : (this.character?.maxHp || playerConfig.hp || 250),
+      maxHp: this.character?.maxHp || playerConfig.maxHp || playerConfig.hp || 250,
+      sp: (typeof this.character?.sp === 'number')
+        ? Math.min(this.character.maxSp || playerConfig.maxSp || 100, this.character.sp)
+        : (this.character?.maxSp || playerConfig.sp || 100),
+      maxSp: this.character?.maxSp || playerConfig.maxSp || playerConfig.sp || 100,
       baseSpeed: playerConfig.speed || 3.1,
       speed: playerConfig.speed || 3.1,
       pickupRadius: 68,
@@ -362,6 +366,18 @@ export class BattleArena {
     ctx.restore();
   }
 
+  syncPlayerHpToCharacter() {
+    if (this.character) {
+      this.character.hp = this.player.hp;
+      this.character.maxHp = this.player.maxHp;
+      this.character.sp = this.player.sp;
+      this.character.maxSp = this.player.maxSp;
+    }
+    if (this.uiManager) {
+      this.uiManager.renderBasicInfo();
+    }
+  }
+
   advanceToStage(nextStageNum) {
     this.stageNum = Math.max(1, Math.min(getMaxStages(), nextStageNum));
     this.stageInfo = getStageInfo(this.stageNum);
@@ -372,6 +388,7 @@ export class BattleArena {
     this.loadStageAssets();
 
     this.player.hp = Math.min(this.player.maxHp, this.player.hp + Math.round(this.player.maxHp * 0.35));
+    this.syncPlayerHpToCharacter();
     audio.playLevelUpSound();
     this.spawnDamageNumber(this.player.x, this.player.y - 55, `🚩 ปลดล็อกด่าน ${this.stageNum}: ${this.stageInfo.name}`, '#ffeaa7', true);
   }
@@ -586,6 +603,10 @@ export class BattleArena {
     // Natural HP regen based on VIT
     const vitRegen = 1.2 + ((this.character?.stats?.vit || 10) * 0.08);
     this.player.hp = Math.min(this.player.maxHp, this.player.hp + dt * vitRegen);
+    if (this.character) {
+      this.character.hp = this.player.hp;
+      this.character.maxHp = this.player.maxHp;
+    }
 
     // Spawner update
     const spawnedBoss = this.waveSpawner.update(dt, this.gameTime, this.player, this.monsters, this.stageKills);
@@ -675,9 +696,11 @@ export class BattleArena {
 
         if (this.player.hp <= 0) {
           this.player.hp = 0;
+          this.syncPlayerHpToCharacter();
           this.triggerGameOver();
           return;
         }
+        this.syncPlayerHpToCharacter();
       }
     }
 
@@ -891,10 +914,12 @@ export class BattleArena {
         audio.playCastSound('holy');
         if (isSpPot) {
           this.player.sp = Math.min(this.player.maxSp, this.player.sp + d.potDef.sp);
+          this.syncPlayerHpToCharacter();
           this.spawnDamageNumber(this.player.x, this.player.y - 20, `+${d.potDef.sp} SP`, '#74b9ff');
         } else {
           const healAmt = d.value || 85;
           this.player.hp = Math.min(this.player.maxHp, this.player.hp + healAmt);
+          this.syncPlayerHpToCharacter();
           this.spawnDamageNumber(this.player.x, this.player.y - 20, `+${healAmt} HP`, '#2ecc71');
         }
       } else {
@@ -1019,6 +1044,7 @@ export class BattleArena {
       this.player.hp = this.player.maxHp;
       this.player.maxSp = this.character?.maxSp || (this.player.maxSp + 16);
       this.player.sp = this.player.maxSp;
+      this.syncPlayerHpToCharacter();
       audio.playLevelUpSound();
       this.levelUpEffectTimer = 1.4;
       this.spawnDamageNumber(this.player.x, this.player.y - 45, `✨ BASE LEVEL UP! Lv.${this.player.level}`, '#ffff00', true);

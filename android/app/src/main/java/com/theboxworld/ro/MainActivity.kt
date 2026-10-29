@@ -1,14 +1,13 @@
 package com.theboxworld.ro
 
 import android.annotation.SuppressLint
-import android.app.AlertDialog
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.View
-import android.view.WindowInsets
-import android.view.WindowInsetsController
 import android.view.WindowManager
+import android.webkit.ConsoleMessage
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -18,13 +17,19 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.webkit.WebViewAssetLoader
 
 class MainActivity : AppCompatActivity() {
 
+    private val TAG = "TheBoxWorldRO"
     private lateinit var webView: WebView
     private val PREF_KEY_URL = "saved_server_url"
     private val OFFLINE_URL = "https://appassets.androidplatform.net/assets/www/index.html"
@@ -36,104 +41,163 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Keep screen awake while playing
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        hideSystemUI()
-
-        // Configure modern Android AssetLoader to serve all APK bundled assets
-        assetLoader = WebViewAssetLoader.Builder()
-            .setDomain("appassets.androidplatform.net")
-            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
-            .build()
-
-        val prefs = getSharedPreferences("the_box_world_prefs", Context.MODE_PRIVATE)
-        val currentUrl = prefs.getString(PREF_KEY_URL, OFFLINE_URL) ?: OFFLINE_URL
-
-        webView = WebView(this).apply {
-            settings.apply {
-                javaScriptEnabled = true
-                domStorageEnabled = true
-                databaseEnabled = true
-                loadsImagesAutomatically = true
-                mediaPlaybackRequiresUserGesture = false
-                allowFileAccess = true
-                allowContentAccess = true
-                allowFileAccessFromFileURLs = true
-                allowUniversalAccessFromFileURLs = true
-                useWideViewPort = true
-                loadWithOverviewMode = true
-                cacheMode = WebSettings.LOAD_DEFAULT
-                mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-            }
-
-            // Enable hardware acceleration
-            setLayerType(View.LAYER_TYPE_HARDWARE, null)
-
-            webChromeClient = WebChromeClient()
-            webViewClient = object : WebViewClient() {
-                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                    return false
+        // Install safe crash handler to prevent immediate silent black-screen crash
+        Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
+            Log.e(TAG, "Uncaught Exception in thread ${thread.name}", throwable)
+            runOnUiThread {
+                try {
+                    AlertDialog.Builder(this)
+                        .setTitle("เกิดข้อผิดพลาดในการเริ่มเกม")
+                        .setMessage("Error: ${throwable.localizedMessage}\n\n${throwable.stackTraceToString().take(400)}")
+                        .setPositiveButton("ปิด") { _, _ -> finish() }
+                        .show()
+                } catch (_: Exception) {
+                    finish()
                 }
-
-                override fun shouldInterceptRequest(
-                    view: WebView?,
-                    request: WebResourceRequest?
-                ): WebResourceResponse? {
-                    val url = request?.url ?: return null
-                    val path = url.path ?: ""
-
-                    // 1. Intercept dynamic /grf/ requests and serve from embedded APK assets
-                    if (path.contains("/grf/")) {
-                        val grfRes = handleGrfRequest(path)
-                        if (grfRes != null) return grfRes
-                    }
-
-                    // 2. Delegate to WebViewAssetLoader for APK's internal assets/www/
-                    return assetLoader.shouldInterceptRequest(url)
-                }
-
-                override fun onReceivedError(
-                    view: WebView?,
-                    request: WebResourceRequest?,
-                    error: WebResourceError?
-                ) {
-                    if (request?.isForMainFrame == true && currentUrl != OFFLINE_URL) {
-                        showServerConfigDialog(
-                            "ไม่สามารถเชื่อมต่อไปยังเซิร์ฟเวอร์ภายนอกได้ ($currentUrl)\nต้องการกลับไปเล่นโหมดออฟไลน์ในเครื่อง (Offline Mode) หรือไม่?"
-                        )
-                    }
-                }
-            }
-
-            setOnLongClickListener {
-                showServerConfigDialog("ตั้งค่าโหมดการเล่น / เปลี่ยนเซิร์ฟเวอร์:")
-                true
             }
         }
 
-        setContentView(webView)
-        webView.loadUrl(currentUrl)
+        try {
+            // Keep screen awake while playing
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        // Handle Android Back button: close in-game active window or exit
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                webView.evaluateJavascript(
-                    "(function() { " +
-                    "  const activeWins = document.querySelectorAll('.ro-window:not(.hidden), .modal-overlay:not(.hidden)'); " +
-                    "  if (activeWins.length > 0) { " +
-                    "    activeWins[activeWins.length - 1].classList.add('hidden'); " +
-                    "    return true; " +
-                    "  } " +
-                    "  return false; " +
-                    "})()"
-                ) { result ->
-                    if (result != "true") {
-                        isEnabled = false
-                        onBackPressedDispatcher.onBackPressed()
+            // Configure modern Android AssetLoader to serve all APK bundled assets
+            assetLoader = WebViewAssetLoader.Builder()
+                .setDomain("appassets.androidplatform.net")
+                .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
+                .build()
+
+            val prefs = getSharedPreferences("the_box_world_prefs", Context.MODE_PRIVATE)
+
+            // CRITICAL FIX: Always default strictly to local offline standalone mode!
+            // If the user previously had a broken local LAN IP (e.g. 10.207.47.54), purge it to prevent black screen crash
+            val savedUrl = prefs.getString(PREF_KEY_URL, null)
+            val currentUrl = if (savedUrl == null || savedUrl.contains("10.207.47.54") || savedUrl.contains("192.168.")) {
+                prefs.edit().putString(PREF_KEY_URL, OFFLINE_URL).apply()
+                OFFLINE_URL
+            } else {
+                savedUrl
+            }
+
+            webView = WebView(this).apply {
+                settings.apply {
+                    javaScriptEnabled = true
+                    domStorageEnabled = true
+                    databaseEnabled = true
+                    loadsImagesAutomatically = true
+                    mediaPlaybackRequiresUserGesture = false
+                    allowFileAccess = true
+                    allowContentAccess = true
+                    allowFileAccessFromFileURLs = true
+                    allowUniversalAccessFromFileURLs = true
+                    useWideViewPort = true
+                    loadWithOverviewMode = true
+                    cacheMode = WebSettings.LOAD_DEFAULT
+                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+                }
+
+                webChromeClient = object : WebChromeClient() {
+                    override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                        Log.d(TAG, "[WebView Console] ${consoleMessage?.message()} -- line ${consoleMessage?.lineNumber()} of ${consoleMessage?.sourceId()}")
+                        return true
                     }
                 }
+
+                webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                        return false
+                    }
+
+                    override fun shouldInterceptRequest(
+                        view: WebView?,
+                        request: WebResourceRequest?
+                    ): WebResourceResponse? {
+                        val url = request?.url ?: return null
+                        val path = url.path ?: ""
+
+                        // 1. Intercept dynamic /grf/ requests and serve from embedded APK assets
+                        if (path.contains("/grf/")) {
+                            val grfRes = handleGrfRequest(path)
+                            if (grfRes != null) return grfRes
+                        }
+
+                        // 2. Delegate to WebViewAssetLoader for APK's internal assets/www/
+                        return assetLoader.shouldInterceptRequest(url)
+                    }
+
+                    override fun onReceivedError(
+                        view: WebView?,
+                        request: WebResourceRequest?,
+                        error: WebResourceError?
+                    ) {
+                        Log.e(TAG, "WebView error: ${error?.errorCode} ${error?.description}")
+                        if (request?.isForMainFrame == true) {
+                            val activeUrl = prefs.getString(PREF_KEY_URL, OFFLINE_URL) ?: OFFLINE_URL
+                            if (activeUrl != OFFLINE_URL) {
+                                runOnUiThread {
+                                    if (!isFinishing && !isDestroyed) {
+                                        showServerConfigDialog(
+                                            "ไม่สามารถเชื่อมต่อไปยังเซิร์ฟเวอร์ภายนอกได้ ($activeUrl)\nต้องการกลับไปเล่นโหมดออฟไลน์ในเครื่อง (Offline Mode) หรือไม่?"
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Long click anywhere to bring up server config dialog safely
+                setOnLongClickListener {
+                    if (!isFinishing && !isDestroyed) {
+                        showServerConfigDialog("ตั้งค่าโหมดการเล่น / เปลี่ยนเซิร์ฟเวอร์:")
+                    }
+                    true
+                }
             }
-        })
+
+            setContentView(webView)
+            applySystemUI()
+            webView.loadUrl(currentUrl)
+
+            // Handle Android Back button: close in-game active window or exit
+            onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    webView.evaluateJavascript(
+                        "(function() { " +
+                        "  const activeWins = document.querySelectorAll('.ro-window:not(.hidden), .modal-overlay:not(.hidden)'); " +
+                        "  if (activeWins.length > 0) { " +
+                        "    activeWins[activeWins.length - 1].classList.add('hidden'); " +
+                        "    return true; " +
+                        "  } " +
+                        "  return false; " +
+                        "})()"
+                    ) { result ->
+                        if (result != "true") {
+                            isEnabled = false
+                            onBackPressedDispatcher.onBackPressed()
+                        }
+                    }
+                }
+            })
+        } catch (e: Throwable) {
+            Log.e(TAG, "Error in onCreate", e)
+            showFatalErrorView(e)
+        }
+    }
+
+    private fun showFatalErrorView(e: Throwable) {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(40, 60, 40, 40)
+            setBackgroundColor(0xFF0A0E17.toInt())
+        }
+        val tv = TextView(this).apply {
+            setTextColor(0xFFFFFFFF.toInt())
+            textSize = 14f
+            text = "เกิดข้อผิดพลาดในการโหลดเกม:\n${e.localizedMessage}\n\n${e.stackTraceToString()}"
+        }
+        layout.addView(tv)
+        setContentView(layout)
     }
 
     private fun handleGrfRequest(path: String): WebResourceResponse? {
@@ -216,6 +280,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showServerConfigDialog(message: String) {
+        if (isFinishing || isDestroyed) return
         val prefs = getSharedPreferences("the_box_world_prefs", Context.MODE_PRIVATE)
         val currentUrl = prefs.getString(PREF_KEY_URL, OFFLINE_URL) ?: OFFLINE_URL
 
@@ -257,42 +322,35 @@ class MainActivity : AppCompatActivity() {
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
-            hideSystemUI()
+            applySystemUI()
         }
     }
 
-    private fun hideSystemUI() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            window.setDecorFitsSystemWindows(false)
-            window.insetsController?.let { controller ->
-                controller.hide(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())
-                controller.systemBarsBehavior = WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            }
-        } else {
-            @Suppress("DEPRECATION")
-            window.decorView.systemUiVisibility = (
-                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
-                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
-                or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
-                or View.SYSTEM_UI_FLAG_FULLSCREEN
-            )
-        }
+    private fun applySystemUI() {
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        val controller = WindowCompat.getInsetsController(window, window.decorView)
+        controller.hide(WindowInsetsCompat.Type.systemBars())
+        controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 
     override fun onResume() {
         super.onResume()
-        webView.onResume()
+        if (::webView.isInitialized) {
+            webView.onResume()
+        }
     }
 
     override fun onPause() {
-        webView.onPause()
+        if (::webView.isInitialized) {
+            webView.onPause()
+        }
         super.onPause()
     }
 
     override fun onDestroy() {
-        webView.destroy()
+        if (::webView.isInitialized) {
+            webView.destroy()
+        }
         super.onDestroy()
     }
 }

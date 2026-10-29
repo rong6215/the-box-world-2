@@ -718,8 +718,10 @@ export class PronteraWorld {
     // HP/SP bars under the character (RO style)
     const bw = 44, bx = ps.x - bw / 2, by = ps.y + 20;
     ctx.fillStyle = '#10189c'; ctx.fillRect(bx - 1, by - 1, bw + 2, 8);
-    ctx.fillStyle = '#18ce10'; ctx.fillRect(bx, by, bw * Math.max(0, Math.min(1, p.hp / p.maxHp)), 3);
-    ctx.fillStyle = '#1873ef'; ctx.fillRect(bx, by + 3, bw * Math.max(0, Math.min(1, p.sp / p.maxSp)), 3);
+    const hpRatio = (p.maxHp && p.maxHp > 0) ? Math.max(0, Math.min(1, (p.hp ?? p.maxHp) / p.maxHp)) : 1;
+    const spRatio = (p.maxSp && p.maxSp > 0) ? Math.max(0, Math.min(1, (p.sp ?? p.maxSp) / p.maxSp)) : 1;
+    ctx.fillStyle = '#18ce10'; ctx.fillRect(bx, by, bw * hpRatio, 3);
+    ctx.fillStyle = '#1873ef'; ctx.fillRect(bx, by + 3, bw * spRatio, 3);
 
     if (this.clickMarker) {
       const m = this.project(this.toWorld(this.clickMarker.gx, this.clickMarker.gy));
